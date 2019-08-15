@@ -37,6 +37,7 @@ setup(
     py_modules=["simple_term_menu"],
     python_requires="~=3.3",
     install_requires=install_requires,
+    entry_points={"console_scripts": ["simple-term-menu = simple_term_menu:main"]},
     author="Ingo Heimbach",
     author_email="i.heimbach@fz-juelich.de",
     description="A Python package which creates simple interactive menus on the command line.",

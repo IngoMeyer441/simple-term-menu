@@ -77,3 +77,33 @@ You can alter the following styles:
 - `menu_highlight_style`: The style of the selected menu entry. The default style is `("standout",)`
 
 By setting `menu_cursor` you can define another cursor or disable it (`None`). The default cursor is `"> "`.
+
+### Command line program
+
+`simple-term-menu` can be used as a terminal program in shell scripts. The exit code of the script is the 1-based index
+of the selected menu entry. The exit code 0 reports the cancel action. The following command line arguments are
+supported:
+
+```
+usage: simple-term-menu [-h] [-c CURSOR] [-s CURSOR_STYLE]
+                        [-m HIGHLIGHT_STYLE] [-C] [-V]
+                        entries [entries ...]
+
+simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
+
+positional arguments:
+  entries               the menu entries to show
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -c CURSOR, --cursor CURSOR
+                        menu cursor (default: > )
+  -s CURSOR_STYLE, --cursor_style CURSOR_STYLE
+                        style for the menu cursor as comma separated list
+                        (default: fg_red,bold)
+  -m HIGHLIGHT_STYLE, --highlight_style HIGHLIGHT_STYLE
+                        style for the selected menu entry as comma separated
+                        list (default: standout)
+  -C, --no-cycle        do not cycle the menu selection
+  -V, --version         print the version number and exit
+```

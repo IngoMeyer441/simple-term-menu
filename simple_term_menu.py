@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+import argparse
 import os
 import sys
 import subprocess
 import termios
-from typing import cast, Dict, List, Optional, Tuple, Union
+from typing import cast, Any, Dict, List, Optional, Tuple, Union
 
 __author__ = "Ingo Heimbach"
 __email__ = "i.heimbach@fz-juelich.de"
@@ -215,9 +216,84 @@ class TerminalMenu:
         return selected_index
 
 
+class AttributeDict(dict):  # type: ignore
+    def __getattr__(self, attr: str) -> Any:
+        return self[attr]
+
+    def __setattr__(self, attr: str, value: Any) -> None:
+        self[attr] = value
+
+
+def get_argumentparser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="""
+%(prog)s creates simple interactive menus in the terminal and returns the selected entry as exit code.
+""",
+    )
+    parser.add_argument(
+        "-c",
+        "--cursor",
+        action="store",
+        dest="cursor",
+        default=DEFAULT_MENU_CURSOR,
+        help="menu cursor (default: %(default)s)",
+    )
+    parser.add_argument(
+        "-s",
+        "--cursor_style",
+        action="store",
+        dest="cursor_style",
+        default=",".join(DEFAULT_MENU_CURSOR_STYLE),
+        help="style for the menu cursor as comma separated list (default: %(default)s)",
+    )
+    parser.add_argument(
+        "-m",
+        "--highlight_style",
+        action="store",
+        dest="highlight_style",
+        default=",".join(DEFAULT_MENU_HIGHLIGHT_STYLE),
+        help="style for the selected menu entry as comma separated list (default: %(default)s)",
+    )
+    parser.add_argument("-C", "--no-cycle", action="store_false", dest="cycle", help="do not cycle the menu selection")
+    parser.add_argument(
+        "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
+    )
+    parser.add_argument("entries", action="store", nargs="+", help="the menu entries to show")
+    return parser
+
+
+def parse_arguments() -> AttributeDict:
+    parser = get_argumentparser()
+    args = AttributeDict({key: value for key, value in vars(parser.parse_args()).items()})
+    if args.cursor_style != "":
+        args.cursor_style = tuple(args.cursor_style.split(","))
+    else:
+        args.cursor_style = None
+    if args.highlight_style != "":
+        args.highlight_style = tuple(args.highlight_style.split(","))
+    else:
+        args.highlight_style = None
+    return args
+
+
 def main() -> None:
-    terminal_menu = TerminalMenu(["entry 1", "entry 2", "entry 3"])
-    print(terminal_menu.show())
+    try:
+        args = parse_arguments()
+    except SystemExit:
+        sys.exit(0)  # Error code 0 is the error case in this program
+    terminal_menu = TerminalMenu(
+        menu_entries=args.entries,
+        menu_cursor=args.cursor,
+        menu_cursor_style=args.cursor_style,
+        menu_highlight_style=args.highlight_style,
+        cycle_cursor=args.cycle,
+    )
+    chosen_entry = terminal_menu.show()
+    if chosen_entry is None:
+        sys.exit(0)
+    else:
+        sys.exit(chosen_entry + 1)
 
 
 if __name__ == "__main__":
