@@ -44,6 +44,8 @@ You will get an output like:
 You can now select a menu entry and accept your choice by hitting enter or cancel the menu with escape or `<Ctrl>-C`.
 `show` returns the selected menu entry index or `None` if the menu was canceled.
 
+You can pass an optional `title` to the `TerminalMenu` constructor which will be placed above the menu.
+
 ### Styling
 
 You can pass styling arguments to the `TerminalMenu` constructor. Each style is a tuple of keyword strings. Currently
@@ -96,6 +98,8 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -t TITLE, --title TITLE
+                        menu title
   -c CURSOR, --cursor CURSOR
                         menu cursor (default: > )
   -s CURSOR_STYLE, --cursor_style CURSOR_STYLE

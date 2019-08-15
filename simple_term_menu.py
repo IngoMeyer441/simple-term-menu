@@ -83,6 +83,7 @@ class TerminalMenu:
     def __init__(
         self,
         menu_entries: List[str],
+        title: Optional[str] = None,
         menu_cursor: Optional[str] = DEFAULT_MENU_CURSOR,
         menu_cursor_style: Optional[Tuple[str, ...]] = DEFAULT_MENU_CURSOR_STYLE,
         menu_highlight_style: Optional[Tuple[str, ...]] = DEFAULT_MENU_HIGHLIGHT_STYLE,
@@ -90,6 +91,7 @@ class TerminalMenu:
     ):
         self._fd = sys.stdin.fileno()
         self._menu_entries = menu_entries
+        self._title = title
         self._menu_cursor = menu_cursor if menu_cursor is not None else ""
         self._menu_cursor_style = menu_cursor_style if menu_cursor_style is not None else ()
         self._menu_highlight_style = menu_highlight_style if menu_highlight_style is not None else ()
@@ -148,7 +150,9 @@ class TerminalMenu:
             return code
 
     def show(self) -> Optional[int]:
-        def print_menu(selected_index: int) -> None:
+        def print_menu(selected_index: int, with_title=True) -> None:
+            if self._title is not None and with_title:
+                print(self._title)
             for i, menu_entry in enumerate(self._menu_entries):
                 sys.stdout.write(len(self._menu_cursor) * " ")
                 if i == selected_index:
@@ -162,6 +166,8 @@ class TerminalMenu:
             sys.stdout.write("\r" + (len(self._menu_entries) - 1) * self._terminal_codes["cursor_up"])
 
         def clear_menu() -> None:
+            if self._title is not None:
+                sys.stdout.write(self._terminal_codes["cursor_up"] + self._terminal_codes["delete_line"])
             sys.stdout.write(len(self._menu_entries) * self._terminal_codes["delete_line"])
             sys.stdout.flush()
 
@@ -185,9 +191,9 @@ class TerminalMenu:
         assert self._terminal_codes is not None
         selected_index = 0  # type: Optional[int]
         self._init_term()
+        print_menu(selected_index)
         try:
             while True:
-                print_menu(selected_index)
                 position_cursor(selected_index)
                 next_key = self._read_next_key(ignore_case=True)
                 if next_key in ("up", "k"):
@@ -209,6 +215,7 @@ class TerminalMenu:
                 elif next_key in ("escape",):
                     selected_index = None
                     break
+                print_menu(selected_index, with_title=False)
         except KeyboardInterrupt:
             selected_index = None
         finally:
@@ -232,6 +239,7 @@ def get_argumentparser() -> argparse.ArgumentParser:
 %(prog)s creates simple interactive menus in the terminal and returns the selected entry as exit code.
 """,
     )
+    parser.add_argument("-t", "--title", action="store", dest="title", help="menu title")
     parser.add_argument(
         "-c",
         "--cursor",
@@ -285,6 +293,7 @@ def main() -> None:
         sys.exit(0)  # Error code 0 is the error case in this program
     terminal_menu = TerminalMenu(
         menu_entries=args.entries,
+        title=args.title,
         menu_cursor=args.cursor,
         menu_cursor_style=args.cursor_style,
         menu_highlight_style=args.highlight_style,
