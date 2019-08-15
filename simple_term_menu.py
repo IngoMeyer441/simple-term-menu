@@ -21,6 +21,10 @@ DEFAULT_MENU_HIGHLIGHT_STYLE = ("standout",)
 DEFAULT_CYCLE_CURSOR = True
 
 
+class NoMenuEntriesError(Exception):
+    pass
+
+
 class TerminalMenu:
     _codename_to_capname = {
         "bg_black": None,
@@ -268,13 +272,15 @@ def get_argumentparser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
     )
-    parser.add_argument("entries", action="store", nargs="+", help="the menu entries to show")
+    parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
     return parser
 
 
 def parse_arguments() -> AttributeDict:
     parser = get_argumentparser()
     args = AttributeDict({key: value for key, value in vars(parser.parse_args()).items()})
+    if not args.print_version and not args.entries:
+        raise NoMenuEntriesError("No menu entries given!")
     if args.cursor_style != "":
         args.cursor_style = tuple(args.cursor_style.split(","))
     else:
@@ -291,6 +297,12 @@ def main() -> None:
         args = parse_arguments()
     except SystemExit:
         sys.exit(0)  # Error code 0 is the error case in this program
+    except NoMenuEntriesError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(0)
+    if args.print_version:
+        print("{}, version {}".format(os.path.basename(sys.argv[0]), __version__))
+        sys.exit(0)
     terminal_menu = TerminalMenu(
         menu_entries=args.entries,
         title=args.title,
