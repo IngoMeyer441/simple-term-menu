@@ -22,7 +22,6 @@ DEFAULT_CYCLE_CURSOR = True
 
 class TerminalMenu:
     _codename_to_capname = {
-        "backspace": "kbs",
         "bg_black": None,
         "bg_blue": None,
         "bg_cyan": None,
@@ -34,14 +33,10 @@ class TerminalMenu:
         "bold": "bold",
         "cursor_down": "cud1",
         "cursor_invisible": "civis",
-        "cursor_left": "cub1",
-        "cursor_right": "cuf1",
         "cursor_up": "cuu1",
         "cursor_visible": "cnorm",
-        "delete": "kdch1",
         "delete_line": "dl1",
         "down": "kcud1",
-        "end": "kend",
         "enter": None,
         "enter_application_mode": "smkx",
         "escape": None,
@@ -54,19 +49,8 @@ class TerminalMenu:
         "fg_purple": None,
         "fg_red": None,
         "fg_yellow": None,
-        "home": "khome",
-        "insert": "kich1",
         "italics": "sitm",
-        "left": "kcub1",
-        "pagedown": "knp",
-        "pageup": "kpp",
         "reset": None,
-        "right": "kcuf1",
-        "s-down": None,
-        "s-left": "kLFT",
-        "s-right": "kRIT",
-        "s-tab": None,
-        "s-up": None,
         "standout": "smso",
         "underline": "smul",
         "up": "kcuu1",
@@ -91,9 +75,6 @@ class TerminalMenu:
         "fg_red": "\033[31m",
         "fg_yellow": "\033[33m",
         "reset": "\033[0m",
-        "s-down": "\033[1;2B",
-        "s-tab": "\033[Z",
-        "s-up": "\033[1;2A",
     }
     _terminal_codes = None  # type: Optional[Dict[str, str]]
     _code_to_codename = None  # type: Optional[Dict[str, str]]
