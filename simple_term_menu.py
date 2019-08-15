@@ -163,6 +163,7 @@ class TerminalMenu:
 
         def clear_menu() -> None:
             sys.stdout.write(len(self._menu_entries) * self._terminal_codes["delete_line"])
+            sys.stdout.flush()
 
         def position_cursor(selected_index: int) -> None:
             # delete the first column
