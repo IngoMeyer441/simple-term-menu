@@ -5,7 +5,7 @@ import os
 import sys
 import subprocess
 import termios
-from typing import cast, Any, Dict, List, Optional, Tuple, Union
+from typing import cast, Any, Dict, Iterable, List, Optional, Union
 
 __author__ = "Ingo Heimbach"
 __email__ = "i.heimbach@fz-juelich.de"
@@ -86,19 +86,19 @@ class TerminalMenu:
 
     def __init__(
         self,
-        menu_entries: List[str],
+        menu_entries: Iterable[str],
         title: Optional[str] = None,
         menu_cursor: Optional[str] = DEFAULT_MENU_CURSOR,
-        menu_cursor_style: Optional[Tuple[str, ...]] = DEFAULT_MENU_CURSOR_STYLE,
-        menu_highlight_style: Optional[Tuple[str, ...]] = DEFAULT_MENU_HIGHLIGHT_STYLE,
+        menu_cursor_style: Optional[Iterable[str]] = DEFAULT_MENU_CURSOR_STYLE,
+        menu_highlight_style: Optional[Iterable[str]] = DEFAULT_MENU_HIGHLIGHT_STYLE,
         cycle_cursor: bool = DEFAULT_CYCLE_CURSOR,
     ):
         self._fd = sys.stdin.fileno()
-        self._menu_entries = menu_entries
+        self._menu_entries = tuple(menu_entries)
         self._title = title
         self._menu_cursor = menu_cursor if menu_cursor is not None else ""
-        self._menu_cursor_style = menu_cursor_style if menu_cursor_style is not None else ()
-        self._menu_highlight_style = menu_highlight_style if menu_highlight_style is not None else ()
+        self._menu_cursor_style = tuple(menu_cursor_style) if menu_cursor_style is not None else ()
+        self._menu_highlight_style = tuple(menu_highlight_style) if menu_highlight_style is not None else ()
         self._cycle_cursor = cycle_cursor
         self._old_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._new_term = None  # type: Optional[List[Union[int, List[bytes]]]]
