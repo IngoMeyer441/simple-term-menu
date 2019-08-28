@@ -27,62 +27,42 @@ class NoMenuEntriesError(Exception):
 
 class TerminalMenu:
     _codename_to_capname = {
-        "bg_black": None,
-        "bg_blue": None,
-        "bg_cyan": None,
-        "bg_gray": None,
-        "bg_green": None,
-        "bg_purple": None,
-        "bg_red": None,
-        "bg_yellow": None,
+        "bg_black": "setab 0",
+        "bg_blue": "setab 4",
+        "bg_cyan": "setab 6",
+        "bg_gray": "setab 7",
+        "bg_green": "setab 2",
+        "bg_purple": "setab 5",
+        "bg_red": "setab 1",
+        "bg_yellow": "setab 3",
         "bold": "bold",
+        "colors": "colors",
         "cursor_down": "cud1",
         "cursor_invisible": "civis",
         "cursor_up": "cuu1",
         "cursor_visible": "cnorm",
         "delete_line": "dl1",
         "down": "kcud1",
-        "enter": None,
         "enter_application_mode": "smkx",
-        "escape": None,
         "exit_application_mode": "rmkx",
-        "fg_black": None,
-        "fg_blue": None,
-        "fg_cyan": None,
-        "fg_gray": None,
-        "fg_green": None,
-        "fg_purple": None,
-        "fg_red": None,
-        "fg_yellow": None,
+        "fg_black": "setaf 0",
+        "fg_blue": "setaf 4",
+        "fg_cyan": "setaf 6",
+        "fg_gray": "setaf 7",
+        "fg_green": "setaf 2",
+        "fg_purple": "setaf 5",
+        "fg_red": "setaf 1",
+        "fg_yellow": "setaf 3",
         "italics": "sitm",
-        "reset": None,
+        "reset_attributes": "sgr0",
         "standout": "smso",
         "underline": "smul",
         "up": "kcuu1",
     }
-    _terminfo_extensions = {
-        "enter": "\012",
-        "escape": "\033",
-        "bg_black": "\033[40m",
-        "bg_blue": "\033[44m",
-        "bg_cyan": "\033[46m",
-        "bg_gray": "\033[47m",
-        "bg_green": "\033[42m",
-        "bg_purple": "\033[45m",
-        "bg_red": "\033[41m",
-        "bg_yellow": "\033[43m",
-        "fg_black": "\033[30m",
-        "fg_blue": "\033[34m",
-        "fg_cyan": "\033[36m",
-        "fg_gray": "\033[37m",
-        "fg_green": "\033[32m",
-        "fg_purple": "\033[35m",
-        "fg_red": "\033[31m",
-        "fg_yellow": "\033[33m",
-        "reset": "\033[0m",
-    }
-    _terminal_codes = None  # type: Optional[Dict[str, str]]
-    _code_to_codename = None  # type: Optional[Dict[str, str]]
+    _name_to_control_character = {"enter": "\012", "escape": "\033"}
+    _codenames = tuple(_codename_to_capname.keys())
+    _codename_to_terminal_code = None  # type: Optional[Dict[str, str]]
+    _terminal_code_to_codename = None  # type: Optional[Dict[str, str]]
 
     def __init__(
         self,
@@ -106,15 +86,19 @@ class TerminalMenu:
 
     @classmethod
     def _init_terminal_codes(cls) -> None:
-        if cls._terminal_codes is not None:
+        if cls._codename_to_terminal_code is not None:
             return
-        if int(cls._query_terminfo_database("colors")) < 8:
-            for name in list(cls._terminfo_extensions.keys()):
-                if name.startswith("fg_"):
-                    cls._terminfo_extensions[name] = ""
-        cls._codenames = tuple(cls._codename_to_capname.keys())
-        cls._terminal_codes = {codename: cls._query_terminfo_database(codename) for codename in cls._codenames}
-        cls._code_to_codename = {code: codename for codename, code in cls._terminal_codes.items()}
+        supported_colors = int(cls._query_terminfo_database("colors"))
+        cls._codename_to_terminal_code = {
+            codename: cls._query_terminfo_database(codename)
+            if not (codename.startswith("bg_") or codename.startswith("fg_")) or supported_colors >= 8
+            else ""
+            for codename in cls._codenames
+        }
+        cls._codename_to_terminal_code.update(cls._name_to_control_character)
+        cls._terminal_code_to_codename = {
+            terminal_code: codename for codename, terminal_code in cls._codename_to_terminal_code.items()
+        }
 
     @classmethod
     def _query_terminfo_database(cls, codename: str) -> str:
@@ -122,32 +106,29 @@ class TerminalMenu:
             capname = cls._codename_to_capname[codename]
         else:
             capname = codename
-        if capname is not None:
-            return str(subprocess.check_output(["tput", capname], universal_newlines=True))
-        else:
-            return cls._terminfo_extensions[codename]
+        return str(subprocess.check_output(["tput"] + capname.split(), universal_newlines=True))
 
     def _init_term(self) -> None:
-        assert self._terminal_codes is not None
+        assert self._codename_to_terminal_code is not None
         self._old_term = termios.tcgetattr(self._fd)
         self._new_term = termios.tcgetattr(self._fd)
         self._new_term[3] = cast(int, self._new_term[3]) & ~termios.ICANON & ~termios.ECHO  # unbuffered and no echo
         termios.tcsetattr(self._fd, termios.TCSAFLUSH, self._new_term)
         # Enter terminal application mode to get expected escape codes for arrow keys
-        sys.stdout.write(self._terminal_codes["enter_application_mode"])
-        sys.stdout.write(self._terminal_codes["cursor_invisible"])
+        sys.stdout.write(self._codename_to_terminal_code["enter_application_mode"])
+        sys.stdout.write(self._codename_to_terminal_code["cursor_invisible"])
 
     def _reset_term(self) -> None:
-        assert self._terminal_codes is not None
+        assert self._codename_to_terminal_code is not None
         assert self._old_term is not None
         termios.tcsetattr(self._fd, termios.TCSAFLUSH, self._old_term)
-        sys.stdout.write(self._terminal_codes["cursor_visible"])
-        sys.stdout.write(self._terminal_codes["exit_application_mode"])
+        sys.stdout.write(self._codename_to_terminal_code["cursor_visible"])
+        sys.stdout.write(self._codename_to_terminal_code["exit_application_mode"])
 
     def _read_next_key(self, ignore_case=True):
         code = os.read(self._fd, 80).decode("ascii")  # blocks until any amount of bytes is available
-        if code in self._code_to_codename:
-            return self._code_to_codename[code]
+        if code in self._terminal_code_to_codename:
+            return self._terminal_code_to_codename[code]
         elif ignore_case:
             return code.lower()
         else:
@@ -161,38 +142,40 @@ class TerminalMenu:
                 sys.stdout.write(len(self._menu_cursor) * " ")
                 if i == selected_index:
                     for style in self._menu_highlight_style:
-                        sys.stdout.write(self._terminal_codes[style])
+                        sys.stdout.write(self._codename_to_terminal_code[style])
                 sys.stdout.write(menu_entry)
                 if i == selected_index:
-                    sys.stdout.write(self._terminal_codes["reset"])
+                    sys.stdout.write(self._codename_to_terminal_code["reset_attributes"])
                 if i < len(self._menu_entries) - 1:
                     sys.stdout.write("\n")
-            sys.stdout.write("\r" + (len(self._menu_entries) - 1) * self._terminal_codes["cursor_up"])
+            sys.stdout.write("\r" + (len(self._menu_entries) - 1) * self._codename_to_terminal_code["cursor_up"])
 
         def clear_menu() -> None:
             if self._title is not None:
-                sys.stdout.write(self._terminal_codes["cursor_up"] + self._terminal_codes["delete_line"])
-            sys.stdout.write(len(self._menu_entries) * self._terminal_codes["delete_line"])
+                sys.stdout.write(
+                    self._codename_to_terminal_code["cursor_up"] + self._codename_to_terminal_code["delete_line"]
+                )
+            sys.stdout.write(len(self._menu_entries) * self._codename_to_terminal_code["delete_line"])
             sys.stdout.flush()
 
         def position_cursor(selected_index: int) -> None:
             # delete the first column
             sys.stdout.write(
                 (len(self._menu_entries) - 1)
-                * (len(self._menu_cursor) * " " + "\r" + self._terminal_codes["cursor_down"])
+                * (len(self._menu_cursor) * " " + "\r" + self._codename_to_terminal_code["cursor_down"])
                 + len(self._menu_cursor) * " "
                 + "\r"
             )
-            sys.stdout.write((len(self._menu_entries) - 1) * self._terminal_codes["cursor_up"])
+            sys.stdout.write((len(self._menu_entries) - 1) * self._codename_to_terminal_code["cursor_up"])
             # position cursor and print menu selection character
-            sys.stdout.write(selected_index * self._terminal_codes["cursor_down"])
+            sys.stdout.write(selected_index * self._codename_to_terminal_code["cursor_down"])
             for style in self._menu_cursor_style:
-                sys.stdout.write(self._terminal_codes[style])
+                sys.stdout.write(self._codename_to_terminal_code[style])
             sys.stdout.write(self._menu_cursor)
-            sys.stdout.write(self._terminal_codes["reset"] + "\r")
-            sys.stdout.write(selected_index * self._terminal_codes["cursor_up"])
+            sys.stdout.write(self._codename_to_terminal_code["reset_attributes"] + "\r")
+            sys.stdout.write(selected_index * self._codename_to_terminal_code["cursor_up"])
 
-        assert self._terminal_codes is not None
+        assert self._codename_to_terminal_code is not None
         selected_index = 0  # type: Optional[int]
         self._init_term()
         print_menu(selected_index)
