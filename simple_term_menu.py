@@ -106,7 +106,13 @@ class TerminalMenu:
             capname = cls._codename_to_capname[codename]
         else:
             capname = codename
-        return str(subprocess.check_output(["tput"] + capname.split(), universal_newlines=True))
+        try:
+            return str(subprocess.check_output(["tput"] + capname.split(), universal_newlines=True))
+        except subprocess.CalledProcessError as e:
+            # The return code 1 indicates a missing terminal capability
+            if e.returncode == 1:
+                return ""
+            raise e
 
     def _init_term(self) -> None:
         assert self._codename_to_terminal_code is not None
