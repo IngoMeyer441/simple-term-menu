@@ -15,6 +15,13 @@ Currently, Linux and macOS are supported.
 python3 -m pip install simple-term-menu
 ```
 
+If you use Arch Linux or one of its derivatives, you can also install `simple-term-menu` from the
+[AUR](https://aur.archlinux.org/packages/python-simple-term-menu/):
+
+```bash
+yay -S python-simple-term-menu
+```
+
 ## Usage
 
 ### Create a menu with the default style
