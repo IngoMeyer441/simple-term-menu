@@ -1,8 +1,44 @@
 stages:
 - deploy
+- deploy-to-aur
+
+deploy-to-github:
+  stage: deploy
+  image: iffregistry.fz-juelich.de/docker-images/gr-build-images/deploy
+  variables:
+    GIT_STRATEGY: none
+  only:
+  - master@heimbach/simple-term-menu
+  - develop@heimbach/simple-term-menu
+  - tags@heimbach/simple-term-menu
+  script:
+  - mkdir --mode=700 ~/.ssh/
+  - (umask 0377 && echo "${GITHUB_DEPLOY_KEY}" > ~/.ssh/id_rsa
+                && echo "github.com ${GITHUB_HOST_KEY}" >> ~/.ssh/known_hosts)
+  - git clone --mirror "${CI_REPOSITORY_URL}" "${CI_PROJECT_NAME}_mirror"
+  - cd "${CI_PROJECT_NAME}_mirror";
+    git push --mirror "git@github.com:IngoHeimbach/${CI_PROJECT_NAME}.git";
+    cd ..
+
+deploy-to-pypi:
+  stage: deploy
+  image: python:3-slim
+  only:
+  - tags@heimbach/simple-term-menu
+  script:
+  - pip install twine
+  - echo "[distutils]"                    > ~/.pypirc;
+    echo "index-servers ="               >> ~/.pypirc;
+    echo "    pypi"                      >> ~/.pypirc;
+    echo "[pypi]"                        >> ~/.pypirc;
+    echo "username = __token__"          >> ~/.pypirc;
+    echo "password = ${PYPI_DEPLOY_KEY}" >> ~/.pypirc;
+  - python setup.py sdist
+  - python setup.py bdist_wheel
+  - twine upload dist/*
 
 deploy-to-aur:
-  stage: deploy
+  stage: deploy-to-aur
   image: iffregistry.fz-juelich.de/docker-images/gr-build-images/$CI_JOB_NAME
   only:
   - tags@heimbach/simple-term-menu
