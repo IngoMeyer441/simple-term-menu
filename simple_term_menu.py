@@ -21,6 +21,10 @@ DEFAULT_MENU_HIGHLIGHT_STYLE = ("standout",)
 DEFAULT_CYCLE_CURSOR = True
 
 
+class InvalidStyleError(Exception):
+    pass
+
+
 class NoMenuEntriesError(Exception):
     pass
 
@@ -82,6 +86,7 @@ class TerminalMenu:
         self._cycle_cursor = cycle_cursor
         self._old_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._new_term = None  # type: Optional[List[Union[int, List[bytes]]]]
+        self._check_for_valid_styles()
         self._init_terminal_codes()
 
     @classmethod
@@ -113,6 +118,18 @@ class TerminalMenu:
             if e.returncode == 1:
                 return ""
             raise e
+
+    def _check_for_valid_styles(self) -> None:
+        invalid_styles = []
+        for style_tuple in (self._menu_cursor_style, self._menu_highlight_style):
+            for style in style_tuple:
+                if style not in self._codename_to_capname:
+                    invalid_styles.append(style)
+        if invalid_styles:
+            if len(invalid_styles) == 1:
+                raise InvalidStyleError('The style "{}" does not exist.'.format(invalid_styles[0]))
+            else:
+                raise InvalidStyleError('The styles ("{}") do not exist.'.format('", "'.join(invalid_styles)))
 
     def _init_term(self) -> None:
         assert self._codename_to_terminal_code is not None
@@ -292,14 +309,18 @@ def main() -> None:
     if args.print_version:
         print("{}, version {}".format(os.path.basename(sys.argv[0]), __version__))
         sys.exit(0)
-    terminal_menu = TerminalMenu(
-        menu_entries=args.entries,
-        title=args.title,
-        menu_cursor=args.cursor,
-        menu_cursor_style=args.cursor_style,
-        menu_highlight_style=args.highlight_style,
-        cycle_cursor=args.cycle,
-    )
+    try:
+        terminal_menu = TerminalMenu(
+            menu_entries=args.entries,
+            title=args.title,
+            menu_cursor=args.cursor,
+            menu_cursor_style=args.cursor_style,
+            menu_highlight_style=args.highlight_style,
+            cycle_cursor=args.cycle,
+        )
+    except InvalidStyleError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(0)
     chosen_entry = terminal_menu.show()
     if chosen_entry is None:
         sys.exit(0)
