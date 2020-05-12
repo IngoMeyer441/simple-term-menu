@@ -294,7 +294,7 @@ class TerminalMenu:
                             selected_index = len(self._menu_entries) - 1
                 elif next_key in ("enter",):
                     break
-                elif next_key in ("escape",):
+                elif next_key in ("escape", "q"):
                     selected_index = None
                     break
                 viewport.keep_visible(selected_index)

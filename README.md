@@ -48,8 +48,9 @@ You will get an output like:
 
 ![screenshot_basic](https://raw.githubusercontent.com/IngoHeimbach/simple-term-menu/master/basic.png)
 
-You can now select a menu entry and accept your choice by hitting enter or cancel the menu with escape or `<Ctrl>-C`.
-`show` returns the selected menu entry index or `None` if the menu was canceled.
+You can now select a menu entry with the arrow keys or `j`/`k` (vim motions) and accept your choice by hitting enter or
+cancel the menu with escape, `q` or `<Ctrl>-C`. `show` returns the selected menu entry index or `None` if the menu was
+canceled.
 
 You can pass an optional `title` to the `TerminalMenu` constructor which will be placed above the menu.
 
