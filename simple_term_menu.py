@@ -169,6 +169,10 @@ class TerminalMenu:
     def _num_lines(self) -> int:
         return int(self._query_terminfo_database("lines"))
 
+    @classmethod
+    def _num_cols(self) -> int:
+        return int(self._query_terminfo_database("cols"))
+
     def _check_for_valid_styles(self) -> None:
         invalid_styles = []
         for style_tuple in (self._menu_cursor_style, self._menu_highlight_style):
@@ -209,13 +213,14 @@ class TerminalMenu:
 
     def show(self) -> Optional[int]:
         def print_menu(selected_index: int) -> None:
-            menu_width = max(len(entry) for entry in self._menu_entries)
+            num_cols = self._num_cols()
+            menu_width = min(max(len(entry) + len(self._menu_cursor) for entry in self._menu_entries), num_cols)
             if self._title is not None:
-                menu_width = max(menu_width, len(self._title))
+                menu_width = max(menu_width, len(self._title[:num_cols]))
                 sys.stdout.write(
                     self._codename_to_terminal_code["cursor_up"]
                     + "\r"
-                    + self._title
+                    + self._title[:num_cols]
                     + (menu_width - len(self._title)) * " "
                     + "\n"
                 )
@@ -224,10 +229,10 @@ class TerminalMenu:
                 if i == selected_index:
                     for style in self._menu_highlight_style:
                         sys.stdout.write(self._codename_to_terminal_code[style])
-                sys.stdout.write(menu_entry)
+                sys.stdout.write(menu_entry[: num_cols - len(self._menu_cursor)])
                 if i == selected_index:
                     sys.stdout.write(self._codename_to_terminal_code["reset_attributes"])
-                sys.stdout.write((menu_width - len(menu_entry)) * " ")
+                sys.stdout.write((menu_width - len(menu_entry) - len(self._menu_cursor)) * " ")
                 if i >= viewport.upper_index:
                     break
                 if i < len(self._menu_entries) - 1:
