@@ -202,7 +202,8 @@ class TerminalMenu:
         sys.stdout.write(self._codename_to_terminal_code["cursor_visible"])
         sys.stdout.write(self._codename_to_terminal_code["exit_application_mode"])
 
-    def _read_next_key(self, ignore_case=True):
+    def _read_next_key(self, ignore_case: bool = True) -> str:
+        assert self._terminal_code_to_codename is not None
         code = os.read(self._fd, 80).decode("ascii")  # blocks until any amount of bytes is available
         if code in self._terminal_code_to_codename:
             return self._terminal_code_to_codename[code]
@@ -267,6 +268,7 @@ class TerminalMenu:
         assert self._codename_to_terminal_code is not None
         self._init_term()
         selected_index = 0  # type: Optional[int]
+        assert selected_index is not None
         viewport = self.Viewport(len(self._menu_entries), self._title is not None, selected_index)
         if self._title is not None:
             # `print_menu` expects the cursor on the first menu item -> reserve one line for the title
@@ -295,7 +297,6 @@ class TerminalMenu:
                 elif next_key in ("escape",):
                     selected_index = None
                     break
-                assert selected_index is not None
                 viewport.keep_visible(selected_index)
                 print_menu(selected_index)
         except KeyboardInterrupt:
