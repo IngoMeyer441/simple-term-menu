@@ -139,6 +139,15 @@ import time
 import os
 from simple_term_menu import TerminalMenu
 
+# clear function 
+def cls(): 
+    # for windows 
+    if os.name == 'nt': 
+        _ = os.system('cls') 
+    # for mac and linux(here, os.name is 'posix') 
+    else: 
+        _ = os.system('clear') 
+        
 def main():
     main_menu_title = "  Main Menu\n"
     main_menu_items = ["Edit Menu", "Second Item", "Third Item", "Quit"]
@@ -148,7 +157,7 @@ def main():
     main_menu_exit = False
 
     main_menu = TerminalMenu(menu_entries=main_menu_items,
-                             title=main_menu_title,
+                             # title=main_menu_title,
                              menu_cursor=main_menu_cursor,
                              menu_cursor_style=main_menu_cursor_style,
                              menu_highlight_style=main_menu_style,
@@ -158,18 +167,19 @@ def main():
     edit_menu_items = ["Edit Config", "Save Settings", "Back to Main Menu"]
     edit_menu_back = False
     edit_menu = TerminalMenu(edit_menu_items,
-                             edit_menu_title,
-                             main_menu_cursor,
-                             main_menu_cursor_style,
-                             main_menu_style)
+                            # edit_menu_title,
+                            menu_cursor=main_menu_cursor,
+                            menu_cursor_style=main_menu_cursor_style,
+                            menu_highlight_style=main_menu_style,)
 
     while not main_menu_exit:
-        os.system('clear')
+        cls()
+        print(main_menu_title)
         main_sel = main_menu.show()
 
         if main_sel == 0:
             while not edit_menu_back:
-                os.system('clear')
+                cls()
                 edit_sel = edit_menu.show()
                 if edit_sel == 0:
                     print("Edit Config Selected")
