@@ -186,6 +186,7 @@ class TerminalMenu:
                 raise InvalidStyleError('The styles ("{}") do not exist.'.format('", "'.join(invalid_styles)))
 
     def _init_term(self) -> None:
+        # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
         self._old_term = termios.tcgetattr(self._fd)
         self._new_term = termios.tcgetattr(self._fd)
@@ -196,6 +197,7 @@ class TerminalMenu:
         sys.stdout.write(self._codename_to_terminal_code["cursor_invisible"])
 
     def _reset_term(self) -> None:
+        # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
         assert self._old_term is not None
         termios.tcsetattr(self._fd, termios.TCSAFLUSH, self._old_term)
@@ -203,6 +205,7 @@ class TerminalMenu:
         sys.stdout.write(self._codename_to_terminal_code["exit_application_mode"])
 
     def _read_next_key(self, ignore_case: bool = True) -> str:
+        # pylint: disable=unsubscriptable-object,unsupported-membership-test
         assert self._terminal_code_to_codename is not None
         code = os.read(self._fd, 80).decode("ascii")  # blocks until any amount of bytes is available
         if code in self._terminal_code_to_codename:
@@ -214,6 +217,8 @@ class TerminalMenu:
 
     def show(self) -> Optional[int]:
         def print_menu(selected_index: int) -> None:
+            # pylint: disable=unsubscriptable-object
+            assert self._codename_to_terminal_code is not None
             num_cols = self._num_cols()
             menu_width = min(max(len(entry) + len(self._menu_cursor) for entry in self._menu_entries), num_cols)
             if self._title is not None:
@@ -241,6 +246,8 @@ class TerminalMenu:
             sys.stdout.write("\r" + (viewport.size - 1) * self._codename_to_terminal_code["cursor_up"])
 
         def clear_menu() -> None:
+            # pylint: disable=unsubscriptable-object
+            assert self._codename_to_terminal_code is not None
             if self._title is not None:
                 sys.stdout.write(
                     self._codename_to_terminal_code["cursor_up"] + self._codename_to_terminal_code["delete_line"]
@@ -249,6 +256,8 @@ class TerminalMenu:
             sys.stdout.flush()
 
         def position_cursor(selected_index: int) -> None:
+            # pylint: disable=unsubscriptable-object
+            assert self._codename_to_terminal_code is not None
             # delete the first column
             sys.stdout.write(
                 (viewport.size - 1)
@@ -265,6 +274,7 @@ class TerminalMenu:
             sys.stdout.write(self._codename_to_terminal_code["reset_attributes"] + "\r")
             sys.stdout.write((selected_index - viewport.lower_index) * self._codename_to_terminal_code["cursor_up"])
 
+        # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
         self._init_term()
         selected_index = 0  # type: Optional[int]
