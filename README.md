@@ -52,7 +52,8 @@ You can now select a menu entry with the arrow keys or `j`/`k` (vim motions) and
 cancel the menu with escape, `q` or `<Ctrl>-C`. `show` returns the selected menu entry index or `None` if the menu was
 canceled.
 
-You can pass an optional `title` to the `TerminalMenu` constructor which will be placed above the menu.
+You can pass an optional `title` to the `TerminalMenu` constructor which will be placed above the menu. `title` can be a
+simple string, a multiline string (with `\n` newlines) or a list of strings.
 
 ### Styling
 

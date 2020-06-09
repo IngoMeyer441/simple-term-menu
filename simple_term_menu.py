@@ -31,10 +31,10 @@ class NoMenuEntriesError(Exception):
 
 class TerminalMenu:
     class Viewport:
-        def __init__(self, num_menu_entries: int, with_title: bool, initial_cursor_position: int = 0):
+        def __init__(self, num_menu_entries: int, title_lines_count: int, initial_cursor_position: int = 0):
             self._num_menu_entries = num_menu_entries
-            self._with_title = with_title
-            self._num_lines = TerminalMenu._num_lines() - (1 if self._with_title else 0)
+            self._title_lines_count = title_lines_count
+            self._num_lines = TerminalMenu._num_lines() - self._title_lines_count
             self._viewport = (0, min(self._num_menu_entries, self._num_lines) - 1)
             self.keep_visible(initial_cursor_position, refresh_terminal_size=False)
 
@@ -51,7 +51,7 @@ class TerminalMenu:
             self._viewport = (self._viewport[0] + scroll_num, self._viewport[1] + scroll_num)
 
         def update_terminal_size(self) -> None:
-            num_lines = TerminalMenu._num_lines() - (1 if self._with_title else 0)
+            num_lines = TerminalMenu._num_lines() - self._title_lines_count
             if num_lines != self._num_lines:
                 # First let the upper index grow or shrink
                 upper_index = min(num_lines, self._num_menu_entries) - 1
@@ -117,7 +117,7 @@ class TerminalMenu:
     def __init__(
         self,
         menu_entries: Iterable[str],
-        title: Optional[str] = None,
+        title: Optional[Union[str, Iterable[str]]] = None,
         menu_cursor: Optional[str] = DEFAULT_MENU_CURSOR,
         menu_cursor_style: Optional[Iterable[str]] = DEFAULT_MENU_CURSOR_STYLE,
         menu_highlight_style: Optional[Iterable[str]] = DEFAULT_MENU_HIGHLIGHT_STYLE,
@@ -125,7 +125,12 @@ class TerminalMenu:
     ):
         self._fd = sys.stdin.fileno()
         self._menu_entries = tuple(menu_entries)
-        self._title = title
+        if title is None:
+            self._title_lines = ()  # type: Tuple[str, ...]
+        elif isinstance(title, str):
+            self._title_lines = tuple(title.split("\n"))
+        else:
+            self._title_lines = tuple(title)
         self._menu_cursor = menu_cursor if menu_cursor is not None else ""
         self._menu_cursor_style = tuple(menu_cursor_style) if menu_cursor_style is not None else ()
         self._menu_highlight_style = tuple(menu_highlight_style) if menu_highlight_style is not None else ()
@@ -221,13 +226,15 @@ class TerminalMenu:
             assert self._codename_to_terminal_code is not None
             num_cols = self._num_cols()
             menu_width = min(max(len(entry) + len(self._menu_cursor) for entry in self._menu_entries), num_cols)
-            if self._title is not None:
-                menu_width = max(menu_width, len(self._title[:num_cols]))
+            if self._title_lines:
+                menu_width = min(max(menu_width, max(len(title_line) for title_line in self._title_lines)), num_cols)
                 sys.stdout.write(
-                    self._codename_to_terminal_code["cursor_up"]
+                    len(self._title_lines) * self._codename_to_terminal_code["cursor_up"]
                     + "\r"
-                    + self._title[:num_cols]
-                    + (menu_width - len(self._title)) * " "
+                    + "\n".join(
+                        (title_line[:num_cols] + (menu_width - len(title_line)) * " ")
+                        for title_line in self._title_lines
+                    )
                     + "\n"
                 )
             for i, menu_entry in enumerate(self._menu_entries[viewport.lower_index :], viewport.lower_index):
@@ -248,10 +255,9 @@ class TerminalMenu:
         def clear_menu() -> None:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
-            if self._title is not None:
-                sys.stdout.write(
-                    self._codename_to_terminal_code["cursor_up"] + self._codename_to_terminal_code["delete_line"]
-                )
+            if self._title_lines:
+                sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_up"])
+                sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["delete_line"])
             sys.stdout.write(viewport.size * self._codename_to_terminal_code["delete_line"])
             sys.stdout.flush()
 
@@ -279,10 +285,10 @@ class TerminalMenu:
         self._init_term()
         selected_index = 0  # type: Optional[int]
         assert selected_index is not None
-        viewport = self.Viewport(len(self._menu_entries), self._title is not None, selected_index)
-        if self._title is not None:
+        viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), selected_index)
+        if self._title_lines:
             # `print_menu` expects the cursor on the first menu item -> reserve one line for the title
-            sys.stdout.write(self._codename_to_terminal_code["cursor_down"])
+            sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_down"])
         print_menu(selected_index)
         try:
             while True:
