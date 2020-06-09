@@ -151,7 +151,7 @@ from simple_term_menu import TerminalMenu
 
 
 def main():
-    main_menu_title = "  Main Menu\n"
+    main_menu_title = "  Main Menu.\n  Press Q or Esc to quit. \n"
     main_menu_items = ["Edit Menu", "Second Item", "Third Item", "Quit"]
     main_menu_cursor = "> "
     main_menu_cursor_style = ("fg_red", "bold")
@@ -166,7 +166,7 @@ def main():
                              cycle_cursor=True,
                              clear_screen=True)
 
-    edit_menu_title = "  Edit Menu\n"
+    edit_menu_title = "  Edit Menu.\n  Press Q or Esc to back to main menu. \n"
     edit_menu_items = ["Edit Config", "Save Settings", "Back to Main Menu"]
     edit_menu_back = False
     edit_menu = TerminalMenu(edit_menu_items,
@@ -189,7 +189,7 @@ def main():
                 elif edit_sel == 1:
                     print("Save Selected")
                     time.sleep(5)
-                elif edit_sel == 2:
+                elif edit_sel == 2 or edit_sel == None:
                     edit_menu_back = True
                     print("Back Selected")
             edit_menu_back = False
@@ -199,7 +199,7 @@ def main():
         elif main_sel == 2:
             print("option 3 selected")
             time.sleep(5)
-        elif main_sel == 3:
+        elif main_sel == 3 or main_sel == None:
             main_menu_exit = True
             print("Quit Selected")
 
