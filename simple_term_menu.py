@@ -11,7 +11,7 @@ __author__ = "Ingo Heimbach"
 __email__ = "i.heimbach@fz-juelich.de"
 __copyright__ = "Copyright © 2019 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (0, 4, 6)
+__version_info__ = (0, 5, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -19,6 +19,7 @@ DEFAULT_MENU_CURSOR = "> "
 DEFAULT_MENU_CURSOR_STYLE = ("fg_red", "bold")
 DEFAULT_MENU_HIGHLIGHT_STYLE = ("standout",)
 DEFAULT_CYCLE_CURSOR = True
+DEFAULT_CLEAR_SCREEN = False
 
 
 class InvalidStyleError(Exception):
@@ -31,10 +32,10 @@ class NoMenuEntriesError(Exception):
 
 class TerminalMenu:
     class Viewport:
-        def __init__(self, num_menu_entries: int, with_title: bool, initial_cursor_position: int = 0):
+        def __init__(self, num_menu_entries: int, title_lines_count: int, initial_cursor_position: int = 0):
             self._num_menu_entries = num_menu_entries
-            self._with_title = with_title
-            self._num_lines = TerminalMenu._num_lines() - (1 if self._with_title else 0)
+            self._title_lines_count = title_lines_count
+            self._num_lines = TerminalMenu._num_lines() - self._title_lines_count
             self._viewport = (0, min(self._num_menu_entries, self._num_lines) - 1)
             self.keep_visible(initial_cursor_position, refresh_terminal_size=False)
 
@@ -51,7 +52,7 @@ class TerminalMenu:
             self._viewport = (self._viewport[0] + scroll_num, self._viewport[1] + scroll_num)
 
         def update_terminal_size(self) -> None:
-            num_lines = TerminalMenu._num_lines() - (1 if self._with_title else 0)
+            num_lines = TerminalMenu._num_lines() - self._title_lines_count
             if num_lines != self._num_lines:
                 # First let the upper index grow or shrink
                 upper_index = min(num_lines, self._num_menu_entries) - 1
@@ -86,6 +87,7 @@ class TerminalMenu:
         "bg_red": "setab 1",
         "bg_yellow": "setab 3",
         "bold": "bold",
+        "clear": "clear",
         "colors": "colors",
         "cursor_down": "cud1",
         "cursor_invisible": "civis",
@@ -117,19 +119,26 @@ class TerminalMenu:
     def __init__(
         self,
         menu_entries: Iterable[str],
-        title: Optional[str] = None,
+        title: Optional[Union[str, Iterable[str]]] = None,
         menu_cursor: Optional[str] = DEFAULT_MENU_CURSOR,
         menu_cursor_style: Optional[Iterable[str]] = DEFAULT_MENU_CURSOR_STYLE,
         menu_highlight_style: Optional[Iterable[str]] = DEFAULT_MENU_HIGHLIGHT_STYLE,
         cycle_cursor: bool = DEFAULT_CYCLE_CURSOR,
+        clear_screen: bool = DEFAULT_CLEAR_SCREEN,
     ):
         self._fd = sys.stdin.fileno()
         self._menu_entries = tuple(menu_entries)
-        self._title = title
+        if title is None:
+            self._title_lines = ()  # type: Tuple[str, ...]
+        elif isinstance(title, str):
+            self._title_lines = tuple(title.split("\n"))
+        else:
+            self._title_lines = tuple(title)
         self._menu_cursor = menu_cursor if menu_cursor is not None else ""
         self._menu_cursor_style = tuple(menu_cursor_style) if menu_cursor_style is not None else ()
         self._menu_highlight_style = tuple(menu_highlight_style) if menu_highlight_style is not None else ()
         self._cycle_cursor = cycle_cursor
+        self._clear_screen = clear_screen
         self._old_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._new_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._check_for_valid_styles()
@@ -186,6 +195,7 @@ class TerminalMenu:
                 raise InvalidStyleError('The styles ("{}") do not exist.'.format('", "'.join(invalid_styles)))
 
     def _init_term(self) -> None:
+        # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
         self._old_term = termios.tcgetattr(self._fd)
         self._new_term = termios.tcgetattr(self._fd)
@@ -194,15 +204,21 @@ class TerminalMenu:
         # Enter terminal application mode to get expected escape codes for arrow keys
         sys.stdout.write(self._codename_to_terminal_code["enter_application_mode"])
         sys.stdout.write(self._codename_to_terminal_code["cursor_invisible"])
+        if self._clear_screen:
+            sys.stdout.write(self._codename_to_terminal_code["clear"])
 
     def _reset_term(self) -> None:
+        # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
         assert self._old_term is not None
         termios.tcsetattr(self._fd, termios.TCSAFLUSH, self._old_term)
         sys.stdout.write(self._codename_to_terminal_code["cursor_visible"])
         sys.stdout.write(self._codename_to_terminal_code["exit_application_mode"])
+        if self._clear_screen:
+            sys.stdout.write(self._codename_to_terminal_code["clear"])
 
     def _read_next_key(self, ignore_case: bool = True) -> str:
+        # pylint: disable=unsubscriptable-object,unsupported-membership-test
         assert self._terminal_code_to_codename is not None
         code = os.read(self._fd, 80).decode("ascii")  # blocks until any amount of bytes is available
         if code in self._terminal_code_to_codename:
@@ -214,15 +230,19 @@ class TerminalMenu:
 
     def show(self) -> Optional[int]:
         def print_menu(selected_index: int) -> None:
+            # pylint: disable=unsubscriptable-object
+            assert self._codename_to_terminal_code is not None
             num_cols = self._num_cols()
             menu_width = min(max(len(entry) + len(self._menu_cursor) for entry in self._menu_entries), num_cols)
-            if self._title is not None:
-                menu_width = max(menu_width, len(self._title[:num_cols]))
+            if self._title_lines:
+                menu_width = min(max(menu_width, max(len(title_line) for title_line in self._title_lines)), num_cols)
                 sys.stdout.write(
-                    self._codename_to_terminal_code["cursor_up"]
+                    len(self._title_lines) * self._codename_to_terminal_code["cursor_up"]
                     + "\r"
-                    + self._title[:num_cols]
-                    + (menu_width - len(self._title)) * " "
+                    + "\n".join(
+                        (title_line[:num_cols] + (menu_width - len(title_line)) * " ")
+                        for title_line in self._title_lines
+                    )
                     + "\n"
                 )
             for i, menu_entry in enumerate(self._menu_entries[viewport.lower_index :], viewport.lower_index):
@@ -241,14 +261,17 @@ class TerminalMenu:
             sys.stdout.write("\r" + (viewport.size - 1) * self._codename_to_terminal_code["cursor_up"])
 
         def clear_menu() -> None:
-            if self._title is not None:
-                sys.stdout.write(
-                    self._codename_to_terminal_code["cursor_up"] + self._codename_to_terminal_code["delete_line"]
-                )
+            # pylint: disable=unsubscriptable-object
+            assert self._codename_to_terminal_code is not None
+            if self._title_lines:
+                sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_up"])
+                sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["delete_line"])
             sys.stdout.write(viewport.size * self._codename_to_terminal_code["delete_line"])
             sys.stdout.flush()
 
         def position_cursor(selected_index: int) -> None:
+            # pylint: disable=unsubscriptable-object
+            assert self._codename_to_terminal_code is not None
             # delete the first column
             sys.stdout.write(
                 (viewport.size - 1)
@@ -265,14 +288,15 @@ class TerminalMenu:
             sys.stdout.write(self._codename_to_terminal_code["reset_attributes"] + "\r")
             sys.stdout.write((selected_index - viewport.lower_index) * self._codename_to_terminal_code["cursor_up"])
 
+        # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
         self._init_term()
         selected_index = 0  # type: Optional[int]
         assert selected_index is not None
-        viewport = self.Viewport(len(self._menu_entries), self._title is not None, selected_index)
-        if self._title is not None:
+        viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), selected_index)
+        if self._title_lines:
             # `print_menu` expects the cursor on the first menu item -> reserve one line for the title
-            sys.stdout.write(self._codename_to_terminal_code["cursor_down"])
+            sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_down"])
         print_menu(selected_index)
         try:
             while True:
@@ -349,6 +373,13 @@ def get_argumentparser() -> argparse.ArgumentParser:
     )
     parser.add_argument("-C", "--no-cycle", action="store_false", dest="cycle", help="do not cycle the menu selection")
     parser.add_argument(
+        "-l",
+        "--clear-screen",
+        action="store_true",
+        dest="clear_screen",
+        help="clear the screen before the menu is shown",
+    )
+    parser.add_argument(
         "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
     )
     parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
@@ -390,6 +421,7 @@ def main() -> None:
             menu_cursor_style=args.cursor_style,
             menu_highlight_style=args.highlight_style,
             cycle_cursor=args.cycle,
+            clear_screen=args.clear_screen,
         )
     except InvalidStyleError as e:
         print(str(e), file=sys.stderr)
