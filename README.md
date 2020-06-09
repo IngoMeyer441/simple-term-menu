@@ -180,6 +180,7 @@ def main():
         if main_sel == 0:
             while not edit_menu_back:
                 cls()
+                print(edit_menu_title)
                 edit_sel = edit_menu.show()
                 if edit_sel == 0:
                     print("Edit Config Selected")
