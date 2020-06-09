@@ -19,6 +19,7 @@ DEFAULT_MENU_CURSOR = "> "
 DEFAULT_MENU_CURSOR_STYLE = ("fg_red", "bold")
 DEFAULT_MENU_HIGHLIGHT_STYLE = ("standout",)
 DEFAULT_CYCLE_CURSOR = True
+DEFAULT_CLEAR_SCREEN = False
 
 
 class InvalidStyleError(Exception):
@@ -86,6 +87,7 @@ class TerminalMenu:
         "bg_red": "setab 1",
         "bg_yellow": "setab 3",
         "bold": "bold",
+        "clear": "clear",
         "colors": "colors",
         "cursor_down": "cud1",
         "cursor_invisible": "civis",
@@ -122,6 +124,7 @@ class TerminalMenu:
         menu_cursor_style: Optional[Iterable[str]] = DEFAULT_MENU_CURSOR_STYLE,
         menu_highlight_style: Optional[Iterable[str]] = DEFAULT_MENU_HIGHLIGHT_STYLE,
         cycle_cursor: bool = DEFAULT_CYCLE_CURSOR,
+        clear_screen: bool = DEFAULT_CLEAR_SCREEN,
     ):
         self._fd = sys.stdin.fileno()
         self._menu_entries = tuple(menu_entries)
@@ -135,6 +138,7 @@ class TerminalMenu:
         self._menu_cursor_style = tuple(menu_cursor_style) if menu_cursor_style is not None else ()
         self._menu_highlight_style = tuple(menu_highlight_style) if menu_highlight_style is not None else ()
         self._cycle_cursor = cycle_cursor
+        self._clear_screen = clear_screen
         self._old_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._new_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._check_for_valid_styles()
@@ -200,6 +204,8 @@ class TerminalMenu:
         # Enter terminal application mode to get expected escape codes for arrow keys
         sys.stdout.write(self._codename_to_terminal_code["enter_application_mode"])
         sys.stdout.write(self._codename_to_terminal_code["cursor_invisible"])
+        if self._clear_screen:
+            sys.stdout.write(self._codename_to_terminal_code["clear"])
 
     def _reset_term(self) -> None:
         # pylint: disable=unsubscriptable-object
@@ -208,6 +214,8 @@ class TerminalMenu:
         termios.tcsetattr(self._fd, termios.TCSAFLUSH, self._old_term)
         sys.stdout.write(self._codename_to_terminal_code["cursor_visible"])
         sys.stdout.write(self._codename_to_terminal_code["exit_application_mode"])
+        if self._clear_screen:
+            sys.stdout.write(self._codename_to_terminal_code["clear"])
 
     def _read_next_key(self, ignore_case: bool = True) -> str:
         # pylint: disable=unsubscriptable-object,unsupported-membership-test
@@ -365,6 +373,13 @@ def get_argumentparser() -> argparse.ArgumentParser:
     )
     parser.add_argument("-C", "--no-cycle", action="store_false", dest="cycle", help="do not cycle the menu selection")
     parser.add_argument(
+        "-l",
+        "--clear-screen",
+        action="store_true",
+        dest="clear_screen",
+        help="clear the screen before the menu is shown",
+    )
+    parser.add_argument(
         "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
     )
     parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
@@ -406,6 +421,7 @@ def main() -> None:
             menu_cursor_style=args.cursor_style,
             menu_highlight_style=args.highlight_style,
             cycle_cursor=args.cycle,
+            clear_screen=args.clear_screen,
         )
     except InvalidStyleError as e:
         print(str(e), file=sys.stderr)

@@ -89,6 +89,15 @@ You can alter the following styles:
 
 By setting `menu_cursor` you can define another cursor or disable it (`None`). The default cursor is `"> "`.
 
+### Additional settings
+
+Furthermore, the `TerminalMenu` constructor takes these additional parameters to change the menu behavior:
+
+- `cycle_cursor`: A bool value which indicates if the menu cursor cycles when the end of the menu is reached. Defaults
+  to `True`.
+- `clear_screen`: A bool value which indicates if the screen will be cleared before the menu is shown. Defaults to
+  `False`.
+
 ### Command line program
 
 `simple-term-menu` can be used as a terminal program in shell scripts. The exit code of the script is the 1-based index
@@ -96,9 +105,9 @@ of the selected menu entry. The exit code 0 reports the cancel action. The follo
 supported:
 
 ```
-usage: simple-term-menu [-h] [-c CURSOR] [-s CURSOR_STYLE]
-                        [-m HIGHLIGHT_STYLE] [-C] [-V]
-                        entries [entries ...]
+usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
+                        [-m HIGHLIGHT_STYLE] [-C] [-l] [-V]
+                        [entries [entries ...]]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
 
@@ -118,6 +127,7 @@ optional arguments:
                         style for the selected menu entry as comma separated
                         list (default: standout)
   -C, --no-cycle        do not cycle the menu selection
+  -l, --clear-screen    clear the screen before the menu is shown
   -V, --version         print the version number and exit
 ```
 
@@ -127,7 +137,7 @@ A more advanced example with sub menus (thanks to [pageauc](https://github.com/p
 
 ```python
 #!/usr/bin/env python3
-'''
+"""
 Demonstration example for GitHub Project at
 https://github.com/IngoHeimbach/simple-term-menu
 
@@ -135,10 +145,10 @@ This code only works in python3. Install per
 
     sudo pip3 install simple-term-menu
 
-'''
+"""
 import time
-import os
 from simple_term_menu import TerminalMenu
+
 
 def main():
     main_menu_title = "  Main Menu\n"
@@ -153,7 +163,8 @@ def main():
                              menu_cursor=main_menu_cursor,
                              menu_cursor_style=main_menu_cursor_style,
                              menu_highlight_style=main_menu_style,
-                             cycle_cursor=True)
+                             cycle_cursor=True,
+                             clear_screen=True)
 
     edit_menu_title = "  Edit Menu\n"
     edit_menu_items = ["Edit Config", "Save Settings", "Back to Main Menu"]
@@ -162,15 +173,15 @@ def main():
                              edit_menu_title,
                              main_menu_cursor,
                              main_menu_cursor_style,
-                             main_menu_style)
+                             main_menu_style,
+                             cycle_cursor=True,
+                             clear_screen=True)
 
     while not main_menu_exit:
-        os.system('clear')
         main_sel = main_menu.show()
 
         if main_sel == 0:
             while not edit_menu_back:
-                os.system('clear')
                 edit_sel = edit_menu.show()
                 if edit_sel == 0:
                     print("Edit Config Selected")
@@ -191,6 +202,7 @@ def main():
         elif main_sel == 3:
             main_menu_exit = True
             print("Quit Selected")
+
 
 if __name__ == "__main__":
     main()
