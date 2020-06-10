@@ -89,6 +89,124 @@ You can alter the following styles:
 
 By setting `menu_cursor` you can define another cursor or disable it (`None`). The default cursor is `"> "`.
 
+### Preview window
+
+`simple-term-menu` can show a preview for each menu entry. Pass a `preview_command` to the `TerminalMenu` constructor to
+activate this optional feature. `preview_command` either takes a command string which will be executed as a subprocess
+or a Python callable which converts a given menu entry string into the preview output. If a command string is given, the
+pattern `{}` is replaced with the current menu entry string. If a menu entry has an additional data component (separated
+by `|`), this is passed instead to the preview command. `\|` can be used for a literal `|`.
+
+The additional keyword argument `preview_size` can be used to control the height of the preview window. It is given as
+fraction of the complete terminal height (default: `0.25`). The width cannot be set, it is always the complete width of
+the terminal window.
+
+Preview commands are allowed to generate [ANSI escape color codes](https://en.wikipedia.org/wiki/ANSI_escape_code#SGR).
+
+#### Preview examples
+
+- Create a menu for all files in the current directory and preview their contents with the
+  [`bat`](https://github.com/sharkdp/bat) command:
+
+  ```python
+  #!/usr/bin/env python3
+
+  import os
+  from simple_term_menu import TerminalMenu
+
+
+  def list_files(directory="."):
+      return (file for file in os.listdir(directory) if os.path.isfile(os.path.join(directory, file)))
+
+
+  def main():
+      terminal_menu = TerminalMenu(list_files(), preview_command="bat --color=always {}", preview_size=0.75)
+      terminal_menu.show()
+
+
+  if __name__ == "__main__":
+      main()
+  ```
+
+  ![screenshot_preview_bat](https://raw.githubusercontent.com/IngoHeimbach/simple-term-menu/master/preview_bat.png)
+
+- Another file preview example using the [Pygments](https://pygments.org) api:
+
+  ```python
+  #!/usr/bin/env python3
+
+  import os
+  from pygments import formatters, highlight, lexers
+  from pygments.util import ClassNotFound
+  from simple_term_menu import TerminalMenu
+
+
+  def highlight_file(filepath):
+      with open(filepath, "r") as f:
+          file_content = f.read()
+      try:
+          lexer = lexers.get_lexer_for_filename(filepath, stripnl=False, stripall=False)
+      except ClassNotFound:
+          lexer = lexers.get_lexer_by_name("text", stripnl=False, stripall=False)
+      formatter = formatters.TerminalFormatter(bg="dark")  # dark or light
+      highlighted_file_content = highlight(file_content, lexer, formatter)
+      return highlighted_file_content
+
+
+  def list_files(directory="."):
+      return (file for file in os.listdir(directory) if os.path.isfile(os.path.join(directory, file)))
+
+
+  def main():
+      terminal_menu = TerminalMenu(list_files(), preview_command=highlight_file, preview_size=0.75)
+      terminal_menu.show()
+
+
+  if __name__ == "__main__":
+      main()
+  ```
+
+  ![screenshot_preview_pygments](https://raw.githubusercontent.com/IngoHeimbach/simple-term-menu/master/preview_pygments.png)
+
+- Preview the active pane of each running tmux session (the session ids are appended to the menu entries with the `|`
+  separator):
+
+  ```python
+  #!/usr/bin/env python3
+
+  import subprocess
+  from simple_term_menu import TerminalMenu
+
+
+  def list_tmux_sessions():
+      tmux_command_output = subprocess.check_output(
+          ["tmux", "list-sessions", "-F#{session_id}:#{session_name}"], universal_newlines=True
+      )
+      tmux_sessions = []
+      for line in tmux_command_output.split("\n"):
+          line = line.strip()
+          if not line:
+              continue
+          session_id, session_name = tuple(line.split(":"))
+          tmux_sessions.append((session_name, session_id))
+      return tmux_sessions
+
+
+  def main():
+      terminal_menu = TerminalMenu(
+          ("|".join(session) for session in list_tmux_sessions()),
+          preview_command="tmux capture-pane -e -p -t {}",
+          preview_size=0.75,
+      )
+      terminal_menu.show()
+
+
+  if __name__ == "__main__":
+      main()
+  ```
+
+  ![screenshot_preview_tmux_sessions](https://raw.githubusercontent.com/IngoHeimbach/simple-term-menu/master/preview_tmux_sessions.png)
+
 ### Additional settings
 
 Furthermore, the `TerminalMenu` constructor takes these additional parameters to change the menu behavior:
@@ -105,11 +223,12 @@ of the selected menu entry. The exit code 0 reports the cancel action. The follo
 supported:
 
 ```
-usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
-                        [-m HIGHLIGHT_STYLE] [-C] [-l] [-V]
-                        [entries [entries ...]]
+usage: simple_term_menu.py [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
+                           [-m HIGHLIGHT_STYLE] [-C] [-l] [-p PREVIEW_COMMAND]
+                           [--preview-size PREVIEW_SIZE] [-V]
+                           [entries [entries ...]]
 
-simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
+simple_term_menu.py creates simple interactive menus in the terminal and returns the selected entry as exit code.
 
 positional arguments:
   entries               the menu entries to show
@@ -128,6 +247,14 @@ optional arguments:
                         list (default: standout)
   -C, --no-cycle        do not cycle the menu selection
   -l, --clear-screen    clear the screen before the menu is shown
+  -p PREVIEW_COMMAND, --preview PREVIEW_COMMAND
+                        Command to generate a preview for the selected menu
+                        entry. "{}" can be used as placeholder for the menu
+                        text. If the menu entry has a data component
+                        (separated by "|"), this is used instead.
+  --preview-size PREVIEW_SIZE
+                        maximum height of the preview window in fractions of
+                        the terminal height (default: 0.25)
   -V, --version         print the version number and exit
 ```
 
