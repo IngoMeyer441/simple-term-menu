@@ -6,9 +6,14 @@ import re
 import shlex
 import subprocess
 import sys
-import termios
 from locale import getlocale
 from typing import cast, Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+try:
+    import termios
+except ImportError:
+    import platform
+    raise NotImplementedError('"{}" is currently not supported.'.format(platform.system()))
+
 
 __author__ = "Ingo Heimbach"
 __email__ = "i.heimbach@fz-juelich.de"
