@@ -2,16 +2,24 @@
 
 import argparse
 import os
-import sys
+import re
+import shlex
 import subprocess
-import termios
-from typing import cast, Any, Dict, Iterable, List, Optional, Tuple, Union
+import sys
+from locale import getlocale
+from typing import cast, Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+try:
+    import termios
+except ImportError:
+    import platform
+    raise NotImplementedError('"{}" is currently not supported.'.format(platform.system()))
+
 
 __author__ = "Ingo Heimbach"
 __email__ = "i.heimbach@fz-juelich.de"
 __copyright__ = "Copyright © 2019 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (0, 5, 0)
+__version_info__ = (0, 6, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -20,6 +28,8 @@ DEFAULT_MENU_CURSOR_STYLE = ("fg_red", "bold")
 DEFAULT_MENU_HIGHLIGHT_STYLE = ("standout",)
 DEFAULT_CYCLE_CURSOR = True
 DEFAULT_CLEAR_SCREEN = False
+DEFAULT_PREVIEW_SIZE = 0.25
+MIN_VISIBLE_MENU_ENTRIES_COUNT = 3
 
 
 class InvalidStyleError(Exception):
@@ -30,12 +40,52 @@ class NoMenuEntriesError(Exception):
     pass
 
 
+class PreviewCommandFailedError(Exception):
+    pass
+
+
+def static_variables(**variables: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def decorator(f: Callable[..., Any]) -> Callable[..., Any]:
+        for key, value in variables.items():
+            setattr(f, key, value)
+        return f
+
+    return decorator
+
+
+class BoxDrawingCharacters:
+    if getlocale()[1] == "UTF-8":
+        # Unicode box characters
+        horizontal = "─"
+        vertical = "│"
+        upper_left = "┌"
+        upper_right = "┐"
+        lower_left = "└"
+        lower_right = "┘"
+    else:
+        # ASCII box characters
+        horizontal = "-"
+        vertical = "|"
+        upper_left = "+"
+        upper_right = "+"
+        lower_left = "+"
+        lower_right = "+"
+
+
 class TerminalMenu:
     class Viewport:
-        def __init__(self, num_menu_entries: int, title_lines_count: int, initial_cursor_position: int = 0):
+        def __init__(
+            self,
+            num_menu_entries: int,
+            title_lines_count: int,
+            preview_lines_count: int,
+            initial_cursor_position: int = 0,
+        ):
             self._num_menu_entries = num_menu_entries
             self._title_lines_count = title_lines_count
-            self._num_lines = TerminalMenu._num_lines() - self._title_lines_count
+            # Use the property setter since it has some more logic
+            self.preview_lines_count = preview_lines_count
+            self._num_lines = TerminalMenu._num_lines() - self._title_lines_count - self._preview_lines_count
             self._viewport = (0, min(self._num_menu_entries, self._num_lines) - 1)
             self.keep_visible(initial_cursor_position, refresh_terminal_size=False)
 
@@ -52,7 +102,7 @@ class TerminalMenu:
             self._viewport = (self._viewport[0] + scroll_num, self._viewport[1] + scroll_num)
 
         def update_terminal_size(self) -> None:
-            num_lines = TerminalMenu._num_lines() - self._title_lines_count
+            num_lines = TerminalMenu._num_lines() - self._title_lines_count - self._preview_lines_count
             if num_lines != self._num_lines:
                 # First let the upper index grow or shrink
                 upper_index = min(num_lines, self._num_menu_entries) - 1
@@ -76,6 +126,25 @@ class TerminalMenu:
         @property
         def size(self) -> int:
             return self._viewport[1] - self._viewport[0] + 1
+
+        @property
+        def num_menu_entries(self) -> int:
+            return self._num_menu_entries
+
+        @property
+        def title_lines_count(self) -> int:
+            return self._title_lines_count
+
+        @property
+        def preview_lines_count(self) -> int:
+            return self._preview_lines_count
+
+        @preview_lines_count.setter
+        def preview_lines_count(self, value: int) -> None:
+            self._preview_lines_count = min(
+                value if value >= 3 else 0,
+                TerminalMenu._num_lines() - self._title_lines_count - MIN_VISIBLE_MENU_ENTRIES_COUNT,
+            )
 
     _codename_to_capname = {
         "bg_black": "setab 0",
@@ -125,9 +194,27 @@ class TerminalMenu:
         menu_highlight_style: Optional[Iterable[str]] = DEFAULT_MENU_HIGHLIGHT_STYLE,
         cycle_cursor: bool = DEFAULT_CYCLE_CURSOR,
         clear_screen: bool = DEFAULT_CLEAR_SCREEN,
+        preview_command: Optional[Union[str, Callable[[str], str]]] = None,
+        preview_size: float = DEFAULT_PREVIEW_SIZE,
     ):
+        def extract_menu_entries_and_preview_arguments(entries: Iterable[str]) -> Tuple[List[str], List[str]]:
+            separator_pattern = re.compile(r"([^\\])\|")
+            escaped_separator_pattern = re.compile(r"\\\|")
+            menu_entry_pattern = re.compile(r"^([^\x1F]+)(\x1F([^\x1F]+))?")
+            menu_entries = []
+            preview_arguments = []
+            for entry in entries:
+                unit_separated_entry = escaped_separator_pattern.sub("|", separator_pattern.sub("\\1\x1F", entry))
+                match_obj = menu_entry_pattern.match(unit_separated_entry)
+                assert match_obj is not None
+                display_text = match_obj.group(1)
+                preview_argument = match_obj.group(3)
+                menu_entries.append(display_text)
+                preview_arguments.append(preview_argument)
+            return menu_entries, preview_arguments
+
         self._fd = sys.stdin.fileno()
-        self._menu_entries = tuple(menu_entries)
+        self._menu_entries, self._preview_arguments = extract_menu_entries_and_preview_arguments(menu_entries)
         if title is None:
             self._title_lines = ()  # type: Tuple[str, ...]
         elif isinstance(title, str):
@@ -139,6 +226,8 @@ class TerminalMenu:
         self._menu_highlight_style = tuple(menu_highlight_style) if menu_highlight_style is not None else ()
         self._cycle_cursor = cycle_cursor
         self._clear_screen = clear_screen
+        self._preview_command = preview_command
+        self._preview_size = preview_size
         self._old_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._new_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._check_for_valid_styles()
@@ -260,6 +349,141 @@ class TerminalMenu:
                     sys.stdout.write("\n")
             sys.stdout.write("\r" + (viewport.size - 1) * self._codename_to_terminal_code["cursor_up"])
 
+        @static_variables(previous_preview_num_lines=None)
+        def print_preview(selected_index: int, preview_max_num_lines: int) -> None:
+            # pylint: disable=unsubscriptable-object
+            assert self._codename_to_terminal_code is not None
+            if self._preview_command is None or preview_max_num_lines < 3:
+                return
+
+            def get_preview_string() -> str:
+                assert self._preview_command is not None
+                preview_argument = (
+                    self._preview_arguments[selected_index]
+                    if self._preview_arguments[selected_index] is not None
+                    else self._menu_entries[selected_index]
+                )
+                if isinstance(self._preview_command, str):
+                    try:
+                        preview_string = subprocess.check_output(
+                            [cmd_part.format(preview_argument) for cmd_part in shlex.split(self._preview_command)],
+                            stderr=subprocess.PIPE,
+                            universal_newlines=True,
+                        ).strip()
+                    except subprocess.CalledProcessError as e:
+                        raise PreviewCommandFailedError(e.stderr.strip())
+                else:
+                    preview_string = self._preview_command(preview_argument)
+                return preview_string
+
+            @static_variables(
+                # Regex taken from https://stackoverflow.com/a/14693789/5958465
+                ansi_escape_regex=re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])"),
+                # Modified version of https://stackoverflow.com/a/2188410/5958465
+                ansi_sgr_regex=re.compile(r"\x1B\[[;\d]*m"),
+            )
+            def strip_ansi_codes_except_styling(string: str) -> str:
+                stripped_string = strip_ansi_codes_except_styling.ansi_escape_regex.sub(  # type: ignore
+                    lambda match_obj: match_obj.group(0)
+                    if strip_ansi_codes_except_styling.ansi_sgr_regex.match(match_obj.group(0))  # type: ignore
+                    else "",
+                    string,
+                )
+                return stripped_string
+
+            @static_variables(
+                regular_text_regex=re.compile(r"([^\x1B]+)(.*)"),
+                ansi_escape_regex=re.compile(r"(\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]))(.*)"),
+            )
+            def limit_string_with_escape_codes(string: str, max_len: int) -> Tuple[str, int]:
+                if max_len <= 0:
+                    return "", 0
+                string_parts = []
+                string_len = 0
+                while string:
+                    regular_text_match = limit_string_with_escape_codes.regular_text_regex.match(string)  # type: ignore
+                    if regular_text_match is not None:
+                        regular_text = regular_text_match.group(1)
+                        regular_text_len = len(regular_text)
+                        if string_len + regular_text_len > max_len:
+                            string_parts.append(regular_text[: max_len - string_len])
+                            string_len = max_len
+                            break
+                        string_parts.append(regular_text)
+                        string_len += regular_text_len
+                        string = regular_text_match.group(2)
+                    else:
+                        ansi_escape_match = limit_string_with_escape_codes.ansi_escape_regex.match(  # type: ignore
+                            string
+                        )
+                        if ansi_escape_match is not None:
+                            # Adopt the ansi escape code but do not count its length
+                            ansi_escape_code_text = ansi_escape_match.group(1)
+                            string_parts.append(ansi_escape_code_text)
+                            string = ansi_escape_match.group(2)
+                        else:
+                            # It looks like an escape code (starts with escape), but it is something else
+                            # -> skip the escape character and continue the loop
+                            string_parts.append("\x1B")
+                            string = string[1:]
+                return "".join(string_parts), string_len
+
+            previous_preview_num_lines = print_preview.previous_preview_num_lines  # type: ignore
+            num_cols = self._num_cols()
+            sys.stdout.write(viewport.size * self._codename_to_terminal_code["cursor_down"])
+            sys.stdout.write(
+                "\r"
+                + (
+                    BoxDrawingCharacters.upper_left
+                    + (2 * BoxDrawingCharacters.horizontal + " preview")[: num_cols - 3]
+                    + " "
+                    + (num_cols - 13) * BoxDrawingCharacters.horizontal
+                    + BoxDrawingCharacters.upper_right
+                )[:num_cols]
+                + "\n"
+            )
+            try:
+                preview_string = strip_ansi_codes_except_styling(get_preview_string())
+            except PreviewCommandFailedError as e:
+                preview_string = "The preview command failed with error message:\n\n" + str(e)
+            # `finditer` can be used as a generator version of `str.join`
+            for i, line in enumerate(match.group(0) for match in re.finditer(r"^.*$", preview_string, re.MULTILINE)):
+                if i >= preview_max_num_lines - 2:
+                    preview_num_lines = preview_max_num_lines
+                    break
+                limited_line, limited_line_len = limit_string_with_escape_codes(line, num_cols - 3)
+                sys.stdout.write(
+                    (
+                        BoxDrawingCharacters.vertical
+                        + (
+                            " "
+                            + limited_line
+                            + self._codename_to_terminal_code["reset_attributes"]
+                            + max(num_cols - limited_line_len - 3, 0) * " "
+                        )
+                        + BoxDrawingCharacters.vertical
+                    )
+                    + "\n"
+                )
+            else:
+                preview_num_lines = i + 3
+            sys.stdout.write(
+                (
+                    BoxDrawingCharacters.lower_left
+                    + (num_cols - 2) * BoxDrawingCharacters.horizontal
+                    + BoxDrawingCharacters.lower_right
+                )[:num_cols]
+                + "\r"
+            )
+            if previous_preview_num_lines is not None and previous_preview_num_lines > preview_num_lines:
+                sys.stdout.write(self._codename_to_terminal_code["cursor_down"])
+                sys.stdout.write(
+                    (previous_preview_num_lines - preview_num_lines) * self._codename_to_terminal_code["delete_line"]
+                )
+                sys.stdout.write(self._codename_to_terminal_code["cursor_up"])
+            sys.stdout.write((viewport.size + preview_num_lines - 1) * self._codename_to_terminal_code["cursor_up"])
+            print_preview.previous_preview_num_lines = preview_num_lines  # type: ignore
+
         def clear_menu() -> None:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
@@ -293,13 +517,19 @@ class TerminalMenu:
         self._init_term()
         selected_index = 0  # type: Optional[int]
         assert selected_index is not None
-        viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), selected_index)
+        viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), 0, selected_index)
         if self._title_lines:
             # `print_menu` expects the cursor on the first menu item -> reserve one line for the title
             sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_down"])
-        print_menu(selected_index)
         try:
             while True:
+                if self._preview_command is not None:
+                    viewport.preview_lines_count = int(self._preview_size * self._num_lines())
+                    preview_max_num_lines = viewport.preview_lines_count
+                viewport.keep_visible(selected_index)
+                print_menu(selected_index)
+                if self._preview_command is not None:
+                    print_preview(selected_index, preview_max_num_lines)
                 position_cursor(selected_index)
                 next_key = self._read_next_key(ignore_case=True)
                 if next_key in ("up", "k"):
@@ -321,8 +551,6 @@ class TerminalMenu:
                 elif next_key in ("escape", "q"):
                     selected_index = None
                     break
-                viewport.keep_visible(selected_index)
-                print_menu(selected_index)
         except KeyboardInterrupt:
             selected_index = None
         finally:
@@ -380,6 +608,25 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help="clear the screen before the menu is shown",
     )
     parser.add_argument(
+        "-p",
+        "--preview",
+        action="store",
+        dest="preview_command",
+        help=(
+            "Command to generate a preview for the selected menu entry. "
+            '"{}" can be used as placeholder for the menu text. '
+            'If the menu entry has a data component (separated by "|"), this is used instead.'
+        ),
+    )
+    parser.add_argument(
+        "--preview-size",
+        action="store",
+        dest="preview_size",
+        type=float,
+        default=DEFAULT_PREVIEW_SIZE,
+        help="maximum height of the preview window in fractions of the terminal height (default: %(default)s)",
+    )
+    parser.add_argument(
         "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
     )
     parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
@@ -422,6 +669,8 @@ def main() -> None:
             menu_highlight_style=args.highlight_style,
             cycle_cursor=args.cycle,
             clear_screen=args.clear_screen,
+            preview_command=args.preview_command,
+            preview_size=args.preview_size,
         )
     except InvalidStyleError as e:
         print(str(e), file=sys.stderr)
