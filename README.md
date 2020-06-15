@@ -95,7 +95,7 @@ By setting `menu_cursor` you can define another cursor or disable it (`None`). T
 activate this optional feature. `preview_command` either takes a command string which will be executed as a subprocess
 or a Python callable which converts a given menu entry string into the preview output. If a command string is given, the
 pattern `{}` is replaced with the current menu entry string. If a menu entry has an additional data component (separated
-by `|`), this is passed instead to the preview command. `\|` can be used for a literal `|`.
+by `|`), it is passed instead to the preview command. `\|` can be used for a literal `|`.
 
 The additional keyword argument `preview_size` can be used to control the height of the preview window. It is given as
 fraction of the complete terminal height (default: `0.25`). The width cannot be set, it is always the complete width of
@@ -256,6 +256,17 @@ optional arguments:
                         maximum height of the preview window in fractions of
                         the terminal height (default: 0.25)
   -V, --version         print the version number and exit
+```
+
+#### Example with preview option
+
+Instead of using the Python api as in the [previous examples](#preview-examples), a file menu with `bat` preview can
+also be created from the command line:
+
+```bash
+simple-term-menu -p "bat --color=always {}" \
+                 --preview-size 0.75 \
+                 $(find . -maxdepth 1  -type f | awk '{ print substr($0, 3) }')
 ```
 
 ### More advanced example
