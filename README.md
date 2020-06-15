@@ -334,3 +334,7 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+
+## Similar projects
+
+- [`bullet`](https://github.com/Mckinsey666/bullet): Creates bullet-lists with multi-selection support.
