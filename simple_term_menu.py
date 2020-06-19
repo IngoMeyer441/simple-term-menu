@@ -536,7 +536,8 @@ class TerminalMenu:
         if self._title_lines:
             sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_up"])
             sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["delete_line"])
-        sys.stdout.write(self._viewport.size * self._codename_to_terminal_code["delete_line"])
+            preview_num_lines = self._previous_preview_num_lines if self._previous_preview_num_lines is not None else 0
+            sys.stdout.write((self._viewport.size + preview_num_lines) * self._codename_to_terminal_code["delete_line"])
         sys.stdout.flush()
 
     def _read_next_key(self, ignore_case: bool = True) -> str:
