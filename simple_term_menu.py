@@ -204,7 +204,7 @@ class TerminalMenu:
         def extract_menu_entries_and_preview_arguments(entries: Iterable[str]) -> Tuple[List[str], List[str]]:
             separator_pattern = re.compile(r"([^\\])\|")
             escaped_separator_pattern = re.compile(r"\\\|")
-            menu_entry_pattern = re.compile(r"^([^\x1F]+)(\x1F([^\x1F]+))?")
+            menu_entry_pattern = re.compile(r"^([^\x1F]+)(\x1F([^\x1F]*))?")
             menu_entries = []
             preview_arguments = []
             for entry in entries:
@@ -352,7 +352,7 @@ class TerminalMenu:
             if self._preview_command is None or preview_max_num_lines < 3:
                 return
 
-            def get_preview_string() -> str:
+            def get_preview_string() -> Optional[str]:
                 assert self._preview_command is not None
                 assert self._selected_index is not None
                 preview_argument = (
@@ -360,6 +360,8 @@ class TerminalMenu:
                     if self._preview_arguments[self._selected_index] is not None
                     else self._menu_entries[self._selected_index]
                 )
+                if preview_argument == "":
+                    return None
                 if isinstance(self._preview_command, str):
                     try:
                         preview_string = subprocess.check_output(
@@ -426,51 +428,59 @@ class TerminalMenu:
                 return "".join(string_parts), string_len
 
             num_cols = self._num_cols()
-            sys.stdout.write(self._viewport.size * self._codename_to_terminal_code["cursor_down"])
-            sys.stdout.write(
-                "\r"
-                + (
-                    BoxDrawingCharacters.upper_left
-                    + (2 * BoxDrawingCharacters.horizontal + " preview")[: num_cols - 3]
-                    + " "
-                    + (num_cols - 13) * BoxDrawingCharacters.horizontal
-                    + BoxDrawingCharacters.upper_right
-                )[:num_cols]
-                + "\n"
-            )
             try:
-                preview_string = strip_ansi_codes_except_styling(get_preview_string())
+                preview_string = get_preview_string()
+                if preview_string is not None:
+                    preview_string = strip_ansi_codes_except_styling(preview_string)
             except PreviewCommandFailedError as e:
                 preview_string = "The preview command failed with error message:\n\n" + str(e)
-            # `finditer` can be used as a generator version of `str.join`
-            for i, line in enumerate(match.group(0) for match in re.finditer(r"^.*$", preview_string, re.MULTILINE)):
-                if i >= preview_max_num_lines - 2:
-                    preview_num_lines = preview_max_num_lines
-                    break
-                limited_line, limited_line_len = limit_string_with_escape_codes(line, num_cols - 3)
+            sys.stdout.write((self._viewport.size - 1) * self._codename_to_terminal_code["cursor_down"])
+            if preview_string is not None:
                 sys.stdout.write(
-                    (
-                        BoxDrawingCharacters.vertical
-                        + (
-                            " "
-                            + limited_line
-                            + self._codename_to_terminal_code["reset_attributes"]
-                            + max(num_cols - limited_line_len - 3, 0) * " "
-                        )
-                        + BoxDrawingCharacters.vertical
-                    )
+                    self._codename_to_terminal_code["cursor_down"]
+                    + "\r"
+                    + (
+                        BoxDrawingCharacters.upper_left
+                        + (2 * BoxDrawingCharacters.horizontal + " preview")[: num_cols - 3]
+                        + " "
+                        + (num_cols - 13) * BoxDrawingCharacters.horizontal
+                        + BoxDrawingCharacters.upper_right
+                    )[:num_cols]
                     + "\n"
                 )
+                # `finditer` can be used as a generator version of `str.join`
+                for i, line in enumerate(
+                    match.group(0) for match in re.finditer(r"^.*$", preview_string, re.MULTILINE)
+                ):
+                    if i >= preview_max_num_lines - 2:
+                        preview_num_lines = preview_max_num_lines
+                        break
+                    limited_line, limited_line_len = limit_string_with_escape_codes(line, num_cols - 3)
+                    sys.stdout.write(
+                        (
+                            BoxDrawingCharacters.vertical
+                            + (
+                                " "
+                                + limited_line
+                                + self._codename_to_terminal_code["reset_attributes"]
+                                + max(num_cols - limited_line_len - 3, 0) * " "
+                            )
+                            + BoxDrawingCharacters.vertical
+                        )
+                        + "\n"
+                    )
+                else:
+                    preview_num_lines = i + 3
+                sys.stdout.write(
+                    (
+                        BoxDrawingCharacters.lower_left
+                        + (num_cols - 2) * BoxDrawingCharacters.horizontal
+                        + BoxDrawingCharacters.lower_right
+                    )[:num_cols]
+                    + "\r"
+                )
             else:
-                preview_num_lines = i + 3
-            sys.stdout.write(
-                (
-                    BoxDrawingCharacters.lower_left
-                    + (num_cols - 2) * BoxDrawingCharacters.horizontal
-                    + BoxDrawingCharacters.lower_right
-                )[:num_cols]
-                + "\r"
-            )
+                preview_num_lines = 0
             if self._previous_preview_num_lines is not None and self._previous_preview_num_lines > preview_num_lines:
                 sys.stdout.write(self._codename_to_terminal_code["cursor_down"])
                 sys.stdout.write(

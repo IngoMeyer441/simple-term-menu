@@ -95,7 +95,8 @@ By setting `menu_cursor` you can define another cursor or disable it (`None`). T
 activate this optional feature. `preview_command` either takes a command string which will be executed as a subprocess
 or a Python callable which converts a given menu entry string into the preview output. If a command string is given, the
 pattern `{}` is replaced with the current menu entry string. If a menu entry has an additional data component (separated
-by `|`), it is passed instead to the preview command. `\|` can be used for a literal `|`.
+by `|`), it is passed instead to the preview command. `\|` can be used for a literal `|`. If you simply append a `|`
+(without a data component), the preview window will be disabled for this entry.
 
 The additional keyword argument `preview_size` can be used to control the height of the preview window. It is given as
 fraction of the complete terminal height (default: `0.25`). The width cannot be set, it is always the complete width of
