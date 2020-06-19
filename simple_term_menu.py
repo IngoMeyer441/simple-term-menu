@@ -511,7 +511,6 @@ class TerminalMenu:
         assert self._codename_to_terminal_code is not None
         if self._selected_index is None:
             self._selected_index = 0
-        self._init_term()
         if self._preview_command is not None:
             self._viewport.preview_lines_count = int(self._preview_size * self._num_lines())
             preview_max_num_lines = self._viewport.preview_lines_count
