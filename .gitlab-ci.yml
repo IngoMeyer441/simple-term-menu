@@ -55,7 +55,7 @@ deploy-to-pypi:
     echo "password = ${PYPI_DEPLOY_KEY}" >> ~/.pypirc;
   - python setup.py sdist
   - python setup.py bdist_wheel
-  - twine upload dist/*
+  - twine upload dist/*.tar.gz dist/*.whl
 
 deploy-to-aur:
   stage: deploy-to-aur
