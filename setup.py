@@ -1,6 +1,30 @@
 import os
 import runpy
-from setuptools import setup, find_packages
+from distutils.cmd import Command
+from setuptools import setup
+try:
+    import PyInstaller.__main__
+    has_pyinstaller = True
+except ImportError:
+    has_pyinstaller = False
+
+
+if has_pyinstaller:
+    class PyinstallerCommand(Command):
+        description = "create a self-contained executable with PyInstaller"
+        user_options = []
+
+        def initialize_options(self):
+            pass
+
+        def finalize_options(self):
+            pass
+
+        def run(self):
+
+            PyInstaller.__main__.run(
+                ["--name={}".format("simple-term-menu"), "--onefile", "--strip", "simple_term_menu.py"]
+            )
 
 
 def get_version_from_pyfile(version_file="simple_term_menu.py"):
@@ -25,6 +49,7 @@ setup(
     py_modules=["simple_term_menu"],
     python_requires="~=3.3",
     entry_points={"console_scripts": ["simple-term-menu = simple_term_menu:main"]},
+    cmdclass={"bdist_pyinstaller": PyinstallerCommand} if has_pyinstaller else {},
     author="Ingo Heimbach",
     author_email="i.heimbach@fz-juelich.de",
     description="A Python package which creates simple interactive menus on the command line.",
