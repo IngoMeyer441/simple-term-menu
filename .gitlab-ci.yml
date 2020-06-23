@@ -1,6 +1,20 @@
 stages:
+- build
 - deploy
 - deploy-to-aur
+
+build-linux-executable:
+  stage: build
+  image: centos:7
+  script:
+  - yum install -y epel-release
+  - yum install -y python36-pip
+  - python3 -m pip install pyinstaller
+  - python3 setup.py bdist_pyinstaller
+  artifacts:
+    expire_in: 1 week
+    paths:
+    - dist/simple-term-menu
 
 deploy-to-github:
   stage: deploy
