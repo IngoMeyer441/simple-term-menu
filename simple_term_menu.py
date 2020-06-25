@@ -23,7 +23,7 @@ __author__ = "Ingo Heimbach"
 __email__ = "i.heimbach@fz-juelich.de"
 __copyright__ = "Copyright © 2019 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (0, 6, 6)
+__version_info__ = (0, 6, 7)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -536,8 +536,8 @@ class TerminalMenu:
         if self._title_lines:
             sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_up"])
             sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["delete_line"])
-            preview_num_lines = self._previous_preview_num_lines if self._previous_preview_num_lines is not None else 0
-            sys.stdout.write((self._viewport.size + preview_num_lines) * self._codename_to_terminal_code["delete_line"])
+        preview_num_lines = self._previous_preview_num_lines if self._previous_preview_num_lines is not None else 0
+        sys.stdout.write((self._viewport.size + preview_num_lines) * self._codename_to_terminal_code["delete_line"])
         sys.stdout.flush()
 
     def _read_next_key(self, ignore_case: bool = True) -> str:
