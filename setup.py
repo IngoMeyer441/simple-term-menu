@@ -1,8 +1,8 @@
 import os
 import runpy
 import subprocess
-from distutils.cmd import Command
 from setuptools import setup
+from distutils.cmd import Command
 from tempfile import TemporaryDirectory
 
 
