@@ -23,7 +23,7 @@ yay -S python-simple-term-menu
 ```
 
 You also find a self-contained executable for 64-bit Linux distributions on the
-[releases page](https://github.com/IngoHeimbach/simple-term-menu/releases/latest). It is created with
+[releases page](https://github.com/IngoMeyer441/simple-term-menu/releases/latest). It is created with
 [PyInstaller](http://www.pyinstaller.org) on CentOS 7 and only requires glibc >= 2.17 (should be fine on any recent
 Linux system).
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
 You will get an output like:
 
-![screenshot_basic](https://raw.githubusercontent.com/IngoHeimbach/simple-term-menu/master/basic.png)
+![screenshot_basic](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/basic.png)
 
 You can now select a menu entry with the arrow keys or `j`/`k` (vim motions) and accept your choice by hitting enter or
 cancel the menu with escape, `q` or `<Ctrl>-C`. `show` returns the selected menu entry index or `None` if the menu was
@@ -134,7 +134,7 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
       main()
   ```
 
-  ![screenshot_preview_bat](https://raw.githubusercontent.com/IngoHeimbach/simple-term-menu/master/preview_bat.png)
+  ![screenshot_preview_bat](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/preview_bat.png)
 
 - Another file preview example using the [Pygments](https://pygments.org) api:
 
@@ -172,7 +172,7 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
       main()
   ```
 
-  ![screenshot_preview_pygments](https://raw.githubusercontent.com/IngoHeimbach/simple-term-menu/master/preview_pygments.png)
+  ![screenshot_preview_pygments](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/preview_pygments.png)
 
 - Preview the active pane of each running tmux session (the session ids are appended to the menu entries with the `|`
   separator):
@@ -211,7 +211,7 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
       main()
   ```
 
-  ![screenshot_preview_tmux_sessions](https://raw.githubusercontent.com/IngoHeimbach/simple-term-menu/master/preview_tmux_sessions.png)
+  ![screenshot_preview_tmux_sessions](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/preview_tmux_sessions.png)
 
 ### Additional settings
 
@@ -283,7 +283,7 @@ A more advanced example with sub menus (thanks to [pageauc](https://github.com/p
 #!/usr/bin/env python3
 """
 Demonstration example for GitHub Project at
-https://github.com/IngoHeimbach/simple-term-menu
+https://github.com/IngoMeyer441/simple-term-menu
 
 This code only works in python3. Install per
 

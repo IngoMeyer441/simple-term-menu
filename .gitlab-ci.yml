@@ -24,27 +24,27 @@ deploy-to-github:
   variables:
     GIT_STRATEGY: none
   only:
-  - master@heimbach/simple-term-menu
-  - develop@heimbach/simple-term-menu
-  - tags@heimbach/simple-term-menu
+  - master@imeyer/simple-term-menu
+  - develop@imeyer/simple-term-menu
+  - tags@imeyer/simple-term-menu
   script:
   - mkdir --mode=700 ~/.ssh/
   - (umask 0377 && echo "${GITHUB_DEPLOY_KEY}" > ~/.ssh/id_rsa
                 && echo "github.com ${GITHUB_HOST_KEY}" >> ~/.ssh/known_hosts)
   - git clone --mirror "${CI_REPOSITORY_URL}" "${CI_PROJECT_NAME}_mirror"
   - cd "${CI_PROJECT_NAME}_mirror";
-    git push --mirror "git@github.com:IngoHeimbach/${CI_PROJECT_NAME}.git";
+    git push --mirror "git@github.com:IngoMeyer441/${CI_PROJECT_NAME}.git";
     cd ..
   - if echo "${CI_COMMIT_TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
       python3 -m pip install "git+https://gitlab-ci-token:${CI_JOB_TOKEN}@iffgit.fz-juelich.de/Scientific-IT-Systems/github-binary-upload.git";
-      echo "${GITHUB_ACCESS_TOKEN}" | github-binary-upload --user IngoHeimbach "IngoHeimbach/${CI_PROJECT_NAME}" "${CI_COMMIT_TAG}" dist/*;
+      echo "${GITHUB_ACCESS_TOKEN}" | github-binary-upload --user IngoMeyer441 "IngoMeyer441/${CI_PROJECT_NAME}" "${CI_COMMIT_TAG}" dist/*;
     fi
 
 deploy-to-pypi:
   stage: deploy
   image: python:3-slim
   only:
-  - tags@heimbach/simple-term-menu
+  - tags@imeyer/simple-term-menu
   script:
   - pip install twine
   - echo "[distutils]"                    > ~/.pypirc;
@@ -61,7 +61,7 @@ deploy-to-aur:
   stage: deploy-to-aur
   image: iffregistry.fz-juelich.de/docker-images/gr-build-images/$CI_JOB_NAME
   only:
-  - tags@heimbach/simple-term-menu
+  - tags@imeyer/simple-term-menu
   script:
   - mkdir --mode=700 ~/.ssh/
   - (umask 0377 && echo "$AUR_PRIVATE_KEY" > ~/.ssh/id_rsa

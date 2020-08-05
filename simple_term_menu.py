@@ -19,8 +19,8 @@ except ImportError:
     raise NotImplementedError('"{}" is currently not supported.'.format(platform.system()))
 
 
-__author__ = "Ingo Heimbach"
-__email__ = "i.heimbach@fz-juelich.de"
+__author__ = "Ingo Meyer"
+__email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2019 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
 __version_info__ = (0, 6, 7)
