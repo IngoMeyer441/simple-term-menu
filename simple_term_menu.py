@@ -780,7 +780,7 @@ class TerminalMenu:
         if self._preview_command is not None:
             self._viewport.preview_lines_count = int(self._preview_size * self._num_lines())
             preview_max_num_lines = self._viewport.preview_lines_count
-        self._viewport.keep_visible(self._view.selected_index)
+        self._viewport.keep_visible(self._view.selected_displayed_index)
         displayed_menu_height += print_menu_entries()
         displayed_menu_height += print_search_line()
         if self._preview_command is not None:
