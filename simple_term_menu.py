@@ -39,7 +39,7 @@ __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2019 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (0, 7, 0)
+__version_info__ = (0, 7, 1)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -780,7 +780,7 @@ class TerminalMenu:
         if self._preview_command is not None:
             self._viewport.preview_lines_count = int(self._preview_size * self._num_lines())
             preview_max_num_lines = self._viewport.preview_lines_count
-        self._viewport.keep_visible(self._view.selected_index)
+        self._viewport.keep_visible(self._view.selected_displayed_index)
         displayed_menu_height += print_menu_entries()
         displayed_menu_height += print_search_line()
         if self._preview_command is not None:
@@ -888,7 +888,7 @@ class TerminalMenu:
                             self._search.search_text = self._search.search_text[:-1]
                         else:
                             self._search.search_text = None
-                    else:
+                    elif next_key not in current_menu_action_to_keys["search_start"] or self._search.search_text != "":
                         self._search.search_text += next_key
         except KeyboardInterrupt:
             menu_was_interrupted = True
