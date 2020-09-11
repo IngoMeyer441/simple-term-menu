@@ -152,6 +152,37 @@ if __name__ == "__main__":
 
 ![screenshot_shortcuts](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/shortcuts.png)
 
+### Custom accept keys
+
+The default key to accept a menu item is `enter`. Pass the `accept_keys` parameter with a tuple of keys (as strings) to
+the `TerminalMenu` constructor to use a different set of accept keys. Custom accept keys can be plain ascii letters or
+ascii letters with a modifier key (prepend `ctrl-` or `alt-` to an ascii letter). Use the `chosen_accept_key` property
+of the `TerminalMenu` instance to query which accept key was pressed by the user.
+
+Be aware that not all combinations of modifier and ascii keys will work depending on your terminal emulator and
+graphical user interface. In addition, some combinations generate other existing keys (e.g. `ctrl-m` is `enter` /
+carriage return).
+
+#### Custom accept keys example
+
+```python
+#!/usr/bin/env python3
+
+import os
+from simple_term_menu import TerminalMenu
+
+
+def main():
+    terminal_menu = TerminalMenu(["entry 1", "entry 2", "entry 3"], accept_keys=("enter", "alt-d", "ctrl-i"))
+    terminal_menu.show()
+    print(terminal_menu.chosen_accept_key)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+
 ### Preview window
 
 `simple-term-menu` can show a preview for each menu entry. Pass a `preview_command` to the `TerminalMenu` constructor to

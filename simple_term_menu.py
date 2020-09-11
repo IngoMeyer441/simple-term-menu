@@ -39,7 +39,7 @@ __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2019 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (0, 8, 0)
+__version_info__ = (0, 9, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -55,6 +55,7 @@ DEFAULT_SEARCH_HIGHLIGHT_STYLE = ("fg_black", "bg_yellow", "bold")
 DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE = ("fg_blue",)
 DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE = ("fg_gray",)
 DEFAULT_EXIT_ON_SHORTCUT = True
+DEFAULT_ACCEPT_KEYS = ("enter",)
 MIN_VISIBLE_MENU_ENTRIES_COUNT = 3
 
 
@@ -388,6 +389,7 @@ class TerminalMenu:
         shortcut_key_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE,
         shortcut_parentheses_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE,
         exit_on_shortcut: bool = DEFAULT_EXIT_ON_SHORTCUT,
+        accept_keys: Iterable[str] = DEFAULT_ACCEPT_KEYS,
     ):
         def extract_shortcuts_menu_entries_and_preview_arguments(
             entries: Iterable[str],
@@ -440,6 +442,8 @@ class TerminalMenu:
             tuple(shortcut_parentheses_highlight_style) if shortcut_parentheses_highlight_style is not None else ()
         )
         self._exit_on_shortcut = exit_on_shortcut
+        self._accept_keys = tuple(accept_keys)
+        self._chosen_accept_key = None  # type: Optional[str]
         self._search = self.Search(self._menu_entries, case_senitive=self._search_case_sensitive)
         self._viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), 0)
         self._view = self.View(self._menu_entries, self._search, self._viewport, self._cycle_cursor)
@@ -452,7 +456,28 @@ class TerminalMenu:
         self._check_for_valid_styles()
         # backspace can be queried from the terminal database but is unreliable, query the terminal directly instead
         self._init_backspace_control_character()
+        self._add_missing_control_characters_for_keys(self._accept_keys)
         self._init_terminal_codes()
+
+    @staticmethod
+    def _get_keycode_for_key(key: str) -> str:
+        if len(key) == 1:
+            # One letter keys represent themselves
+            return key
+        alt_modified_regex = re.compile(r"[Aa]lt-(\S)")
+        ctrl_modified_regex = re.compile(r"[Cc]trl-(\S)")
+        match_obj = alt_modified_regex.match(key)
+        if match_obj:
+            return "\033" + match_obj.group(1)
+        match_obj = ctrl_modified_regex.match(key)
+        if match_obj:
+            # Ctrl + key is interpreted by terminals as the ascii code of that key minus 64
+            ctrl_code_ascii = ord(match_obj.group(1).upper()) - 64
+            if ctrl_code_ascii < 0:
+                # Interpret negative ascii codes as unsigned 7-Bit integers
+                ctrl_code_ascii = ctrl_code_ascii & 0x80 - 1
+            return chr(ctrl_code_ascii)
+        raise ValueError('Cannot interpret the given key "{}".'.format(key))
 
     @classmethod
     def _init_backspace_control_character(self) -> None:
@@ -466,17 +491,18 @@ class TerminalMenu:
                 name, ctrl_code = match_obj.group(1), match_obj.group(2)
                 if name != "erase":
                     continue
-                # Ctrl + key is interpreted by terminals as the ascii code of that key minus 64
-                ctrl_code_ascii = ord(ctrl_code) - 64
-                if ctrl_code_ascii < 0:
-                    # Interpret negative ascii codes as unsigned 7-Bit integers
-                    ctrl_code_ascii = ctrl_code_ascii & 0x80 - 1
-                self._name_to_control_character["backspace"] = chr(ctrl_code_ascii)
+                self._name_to_control_character["backspace"] = self._get_keycode_for_key("ctrl-" + ctrl_code)
                 return
         except subprocess.CalledProcessError:
             pass
         # Backspace control character could not be queried, assume `<Ctrl-?>` (is most often used)
         self._name_to_control_character["backspace"] = "\177"
+
+    @classmethod
+    def _add_missing_control_characters_for_keys(cls, keys: Iterable[str]) -> None:
+        for key in keys:
+            if key not in cls._name_to_control_character and key not in string.ascii_letters:
+                cls._name_to_control_character[key] = cls._get_keycode_for_key(key)
 
     @classmethod
     def _init_terminal_codes(cls) -> None:
@@ -915,7 +941,7 @@ class TerminalMenu:
             menu_action_to_keys = {
                 "menu_up": set(("up", "ctrl-k", "k")),
                 "menu_down": set(("down", "ctrl-j", "j")),
-                "select": set(("enter",)),
+                "accept": set(self._accept_keys),
                 "quit": set(("escape", "q")),
                 "search_start": set((self._search_key,)),
                 "backspace": set(("backspace",)),
@@ -936,7 +962,8 @@ class TerminalMenu:
                     self._view.decrement_selected_index()
                 elif next_key in current_menu_action_to_keys["menu_down"]:
                     self._view.increment_selected_index()
-                elif next_key in current_menu_action_to_keys["select"]:
+                elif next_key in current_menu_action_to_keys["accept"]:
+                    self._chosen_accept_key = next_key
                     break
                 elif next_key in current_menu_action_to_keys["quit"]:
                     if not self._search:
@@ -967,6 +994,10 @@ class TerminalMenu:
             self._clear_menu()
             self._reset_term()
         return self._view.selected_index if not menu_was_interrupted else None
+
+    @property
+    def chosen_accept_key(self) -> Optional[str]:
+        return self._chosen_accept_key
 
 
 class AttributeDict(dict):  # type: ignore
