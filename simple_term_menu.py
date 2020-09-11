@@ -1,15 +1,31 @@
 #!/usr/bin/env python3
 
 import argparse
+import copy
 import os
 import re
 import shlex
 import signal
+import string
 import subprocess
 import sys
 from locale import getlocale
 from types import FrameType
-from typing import cast, Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import (
+    cast,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Match,
+    Optional,
+    Pattern,
+    Set,
+    Tuple,
+    Union,
+)
 
 try:
     import termios
@@ -19,11 +35,11 @@ except ImportError:
     raise NotImplementedError('"{}" is currently not supported.'.format(platform.system()))
 
 
-__author__ = "Ingo Heimbach"
-__email__ = "i.heimbach@fz-juelich.de"
+__author__ = "Ingo Meyer"
+__email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2019 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (0, 6, 7)
+__version_info__ = (0, 7, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -33,6 +49,9 @@ DEFAULT_MENU_HIGHLIGHT_STYLE = ("standout",)
 DEFAULT_CYCLE_CURSOR = True
 DEFAULT_CLEAR_SCREEN = False
 DEFAULT_PREVIEW_SIZE = 0.25
+DEFAULT_SEARCH_KEY = "/"
+DEFAULT_SEARCH_CASE_SENSITIVE = False
+DEFAULT_SEARCH_HIGHLIGHT_STYLE = ("fg_black", "bg_yellow", "bold")
 MIN_VISIBLE_MENU_ENTRIES_COUNT = 3
 
 
@@ -77,23 +96,155 @@ class BoxDrawingCharacters:
 
 
 class TerminalMenu:
+    class Search:
+        def __init__(self, menu_entries: Iterable[str], search_text: Optional[str] = None, case_senitive: bool = False):
+            self._menu_entries = menu_entries
+            self._case_sensitive = case_senitive
+            self._matches = []  # type: List[Tuple[int, Match[str]]]
+            self._search_regex = None  # type: Optional[Pattern[str]]
+            self._change_callback = None  # type: Optional[Callable[[], None]]
+            # Use the property setter since it has some more logic
+            self.search_text = search_text
+
+        def _update_matches(self) -> None:
+            if self._search_regex is None:
+                self._matches = []
+            else:
+                matches = []
+                for i, menu_entry in enumerate(self._menu_entries):
+                    match_obj = self._search_regex.search(menu_entry)
+                    if match_obj:
+                        matches.append((i, match_obj))
+                self._matches = matches
+
+        @property
+        def matches(self) -> List[Tuple[int, Match[str]]]:
+            return list(self._matches)
+
+        @property
+        def search_regex(self) -> Optional[Pattern[str]]:
+            return self._search_regex
+
+        @property
+        def search_text(self) -> Optional[str]:
+            return self._search_text
+
+        @search_text.setter
+        def search_text(self, text: Optional[str]) -> None:
+            self._search_text = text
+            search_text = self._search_text
+            self._search_regex = None
+            while search_text and self._search_regex is None:
+                try:
+                    self._search_regex = re.compile(search_text, flags=re.IGNORECASE if not self._case_sensitive else 0)
+                except re.error:
+                    search_text = search_text[:-1]
+            self._update_matches()
+            if self._change_callback:
+                self._change_callback()
+
+        @property
+        def change_callback(self) -> Optional[Callable[[], None]]:
+            return self._change_callback
+
+        @change_callback.setter
+        def change_callback(self, callback: Optional[Callable[[], None]]) -> None:
+            self._change_callback = callback
+
+        def __bool__(self) -> bool:
+            return self._search_text is not None
+
+        def __contains__(self, menu_index: int) -> bool:
+            return any(i == menu_index for i, _ in self._matches)
+
+        def __len__(self) -> int:
+            return len(self._search_text) if self._search_text is not None else 0
+
+    class View:
+        def __init__(
+            self,
+            menu_entries: Iterable[str],
+            search: "TerminalMenu.Search",
+            viewport: "TerminalMenu.Viewport",
+            cycle_cursor: bool = True,
+        ):
+            self._menu_entries = list(menu_entries)
+            self._search = search
+            self._viewport = viewport
+            self._cycle_cursor = cycle_cursor
+            self._selected_displayed_index = None  # type: Optional[int]
+            self.update_view()
+
+        def update_view(self) -> None:
+            if self._search and self._search.search_text != "":
+                self._displayed_index_to_menu_index = tuple(i for i, match_obj in self._search.matches)
+            else:
+                self._displayed_index_to_menu_index = tuple(range(len(self._menu_entries)))
+            self._selected_displayed_index = 0 if self._displayed_index_to_menu_index else None
+            self._viewport.show_search_line = bool(self._search)
+            self._viewport.keep_visible(self._selected_displayed_index)
+
+        def increment_selected_index(self) -> None:
+            if self._selected_displayed_index is not None:
+                if self._selected_displayed_index + 1 < len(self._displayed_index_to_menu_index):
+                    self._selected_displayed_index += 1
+                elif self._cycle_cursor:
+                    self._selected_displayed_index = 0
+                self._viewport.keep_visible(self._selected_displayed_index)
+
+        def decrement_selected_index(self) -> None:
+            if self._selected_displayed_index is not None:
+                if self._selected_displayed_index > 0:
+                    self._selected_displayed_index -= 1
+                elif self._cycle_cursor:
+                    self._selected_displayed_index = len(self._displayed_index_to_menu_index) - 1
+                self._viewport.keep_visible(self._selected_displayed_index)
+
+        @property
+        def selected_index(self) -> Optional[int]:
+            if self._selected_displayed_index is not None:
+                return self._displayed_index_to_menu_index[self._selected_displayed_index]
+            else:
+                return None
+
+        @property
+        def selected_displayed_index(self) -> Optional[int]:
+            return self._selected_displayed_index
+
+        def __iter__(self) -> Iterator[Tuple[int, int, str]]:
+            for displayed_index, menu_index in enumerate(self._displayed_index_to_menu_index):
+                if self._viewport.lower_index <= displayed_index <= self._viewport.upper_index:
+                    yield (displayed_index, menu_index, self._menu_entries[menu_index])
+
     class Viewport:
         def __init__(
             self,
             num_menu_entries: int,
             title_lines_count: int,
             preview_lines_count: int,
-            initial_cursor_position: int = 0,
+            show_search_line: bool = False,
         ):
             self._num_menu_entries = num_menu_entries
             self._title_lines_count = title_lines_count
             # Use the property setter since it has some more logic
             self.preview_lines_count = preview_lines_count
-            self._num_lines = TerminalMenu._num_lines() - self._title_lines_count - self._preview_lines_count
+            self.show_search_line = show_search_line
+            self._num_lines = self._calculate_num_lines()
             self._viewport = (0, min(self._num_menu_entries, self._num_lines) - 1)
-            self.keep_visible(initial_cursor_position, refresh_terminal_size=False)
+            self.keep_visible(cursor_position=None, refresh_terminal_size=False)
 
-        def keep_visible(self, cursor_position: int, refresh_terminal_size: bool = True) -> None:
+        def _calculate_num_lines(self) -> int:
+            return (
+                TerminalMenu._num_lines()
+                - self._title_lines_count
+                - self._preview_lines_count
+                - int(self._show_search_line)
+            )
+
+        def keep_visible(self, cursor_position: Optional[int], refresh_terminal_size: bool = True) -> None:
+            # Treat `cursor_position=None` like `cursor_position=0`
+            if cursor_position is None:
+                cursor_position = 0
             if refresh_terminal_size:
                 self.update_terminal_size()
             if self._viewport[0] <= cursor_position <= self._viewport[1]:
@@ -106,7 +257,7 @@ class TerminalMenu:
             self._viewport = (self._viewport[0] + scroll_num, self._viewport[1] + scroll_num)
 
         def update_terminal_size(self) -> None:
-            num_lines = TerminalMenu._num_lines() - self._title_lines_count - self._preview_lines_count
+            num_lines = self._calculate_num_lines()
             if num_lines != self._num_lines:
                 # First let the upper index grow or shrink
                 upper_index = min(num_lines, self._num_menu_entries) - 1
@@ -150,6 +301,18 @@ class TerminalMenu:
                 TerminalMenu._num_lines() - self._title_lines_count - MIN_VISIBLE_MENU_ENTRIES_COUNT,
             )
 
+        @property
+        def show_search_line(self) -> bool:
+            return self._show_search_line
+
+        @show_search_line.setter
+        def show_search_line(self, value: bool) -> None:
+            self._show_search_line = value
+
+        @property
+        def must_scroll(self) -> bool:
+            return self._num_menu_entries > self._num_lines
+
     _codename_to_capname = {
         "bg_black": "setab 0",
         "bg_blue": "setab 4",
@@ -184,7 +347,13 @@ class TerminalMenu:
         "underline": "smul",
         "up": "kcuu1",
     }
-    _name_to_control_character = {"enter": "\012", "escape": "\033"}
+    _name_to_control_character = {
+        "backspace": "",  # Is assigned later in `self._init_backspace_control_character`
+        "ctrl-j": "\012",
+        "ctrl-k": "\013",
+        "enter": "\015",
+        "escape": "\033",
+    }
     _codenames = tuple(_codename_to_capname.keys())
     _codename_to_terminal_code = None  # type: Optional[Dict[str, str]]
     _terminal_code_to_codename = None  # type: Optional[Dict[str, str]]
@@ -200,6 +369,9 @@ class TerminalMenu:
         clear_screen: bool = DEFAULT_CLEAR_SCREEN,
         preview_command: Optional[Union[str, Callable[[str], str]]] = None,
         preview_size: float = DEFAULT_PREVIEW_SIZE,
+        search_key: Optional[str] = DEFAULT_SEARCH_KEY,
+        search_case_sensitive: bool = DEFAULT_SEARCH_CASE_SENSITIVE,
+        search_highlight_style: Optional[Iterable[str]] = DEFAULT_SEARCH_HIGHLIGHT_STYLE,
     ):
         def extract_menu_entries_and_preview_arguments(entries: Iterable[str]) -> Tuple[List[str], List[str]]:
             separator_pattern = re.compile(r"([^\\])\|")
@@ -232,15 +404,46 @@ class TerminalMenu:
         self._clear_screen = clear_screen
         self._preview_command = preview_command
         self._preview_size = preview_size
-        self._selected_index = None  # type: Optional[int]
+        self._search_key = search_key
+        self._search_case_sensitive = search_case_sensitive
+        self._search_highlight_style = tuple(search_highlight_style) if search_highlight_style is not None else ()
+        self._search = self.Search(self._menu_entries, case_senitive=self._search_case_sensitive)
         self._viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), 0)
-        self._previous_preview_num_lines = None  # type: Optional[int]
+        self._view = self.View(self._menu_entries, self._search, self._viewport, self._cycle_cursor)
+        self._search.change_callback = self._view.update_view
+        self._previous_displayed_menu_height = None  # type: Optional[int]
         self._reading_next_key = False
         self._paint_before_next_read = False
         self._old_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._new_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._check_for_valid_styles()
+        # backspace can be queried from the terminal database but is unreliable, query the terminal directly instead
+        self._init_backspace_control_character()
         self._init_terminal_codes()
+
+    @classmethod
+    def _init_backspace_control_character(self) -> None:
+        try:
+            stty_output = subprocess.check_output(["stty", "-a"], universal_newlines=True)
+            name_to_keycode_regex = re.compile(r"^\s*(\S+)\s*=\s*\^(\S+)\s*$")
+            for field in stty_output.split(";"):
+                match_obj = name_to_keycode_regex.match(field)
+                if not match_obj:
+                    continue
+                name, ctrl_code = match_obj.group(1), match_obj.group(2)
+                if name != "erase":
+                    continue
+                # Ctrl + key is interpreted by terminals as the ascii code of that key minus 64
+                ctrl_code_ascii = ord(ctrl_code) - 64
+                if ctrl_code_ascii < 0:
+                    # Interpret negative ascii codes as unsigned 7-Bit integers
+                    ctrl_code_ascii = ctrl_code_ascii & 0x80 - 1
+                self._name_to_control_character["backspace"] = chr(ctrl_code_ascii)
+                return
+        except subprocess.CalledProcessError:
+            pass
+        # Backspace control character could not be queried, assume `<Ctrl-?>` (is most often used)
+        self._name_to_control_character["backspace"] = "\177"
 
     @classmethod
     def _init_terminal_codes(cls) -> None:
@@ -265,7 +468,7 @@ class TerminalMenu:
         else:
             capname = codename
         try:
-            return str(subprocess.check_output(["tput"] + capname.split(), universal_newlines=True))
+            return subprocess.check_output(["tput"] + capname.split(), universal_newlines=True)
         except subprocess.CalledProcessError as e:
             # The return code 1 indicates a missing terminal capability
             if e.returncode == 1:
@@ -282,7 +485,7 @@ class TerminalMenu:
 
     def _check_for_valid_styles(self) -> None:
         invalid_styles = []
-        for style_tuple in (self._menu_cursor_style, self._menu_highlight_style):
+        for style_tuple in (self._menu_cursor_style, self._menu_highlight_style, self._search_highlight_style):
             for style in style_tuple:
                 if style not in self._codename_to_capname:
                     invalid_styles.append(style)
@@ -297,7 +500,10 @@ class TerminalMenu:
         assert self._codename_to_terminal_code is not None
         self._old_term = termios.tcgetattr(self._fd)
         self._new_term = termios.tcgetattr(self._fd)
-        self._new_term[3] = cast(int, self._new_term[3]) & ~termios.ICANON & ~termios.ECHO  # unbuffered and no echo
+        # set the terminal to: unbuffered, no echo and no <CR> to <NL> translation (so <enter> sends <CR> instead of
+        # <NL, this is necessary to distinguish between <enter> and <Ctrl-j> since <Ctrl-j> generates <NL>)
+        self._new_term[3] = cast(int, self._new_term[3]) & ~termios.ICANON & ~termios.ECHO & ~termios.ICRNL
+        self._new_term[0] = cast(int, self._new_term[0]) & ~termios.ICRNL
         termios.tcsetattr(self._fd, termios.TCSAFLUSH, self._new_term)
         # Enter terminal application mode to get expected escape codes for arrow keys
         sys.stdout.write(self._codename_to_terminal_code["enter_application_mode"])
@@ -316,9 +522,10 @@ class TerminalMenu:
             sys.stdout.write(self._codename_to_terminal_code["clear"])
 
     def _paint_menu(self) -> None:
-        def print_menu_entries() -> None:
+        def print_menu_entries() -> int:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
+            displayed_menu_height = 0  # sum all written lines
             num_cols = self._num_cols()
             if self._title_lines:
                 sys.stdout.write(
@@ -329,36 +536,73 @@ class TerminalMenu:
                     )
                     + "\n"
                 )
-            for i, menu_entry in enumerate(
-                self._menu_entries[self._viewport.lower_index :], self._viewport.lower_index
-            ):
+            displayed_index = -1
+            for displayed_index, menu_index, menu_entry in self._view:
                 sys.stdout.write(len(self._menu_cursor) * " ")
-                if i == self._selected_index:
+                if menu_index == self._view.selected_index:
                     for style in self._menu_highlight_style:
                         sys.stdout.write(self._codename_to_terminal_code[style])
-                sys.stdout.write(menu_entry[: num_cols - len(self._menu_cursor)])
-                if i == self._selected_index:
+                if self._search and self._search.search_text != "":
+                    match_obj = self._search.matches[displayed_index][1]
+                    sys.stdout.write(menu_entry[: min(match_obj.start(), num_cols - len(self._menu_cursor))])
+                    sys.stdout.write(self._codename_to_terminal_code["reset_attributes"])
+                    for style in self._search_highlight_style:
+                        sys.stdout.write(self._codename_to_terminal_code[style])
+                    sys.stdout.write(
+                        menu_entry[match_obj.start() : min(match_obj.end(), num_cols - len(self._menu_cursor))]
+                    )
+                    sys.stdout.write(self._codename_to_terminal_code["reset_attributes"])
+                    if menu_index == self._view.selected_index:
+                        for style in self._menu_highlight_style:
+                            sys.stdout.write(self._codename_to_terminal_code[style])
+                    sys.stdout.write(menu_entry[match_obj.end() : num_cols - len(self._menu_cursor)])
+                else:
+                    sys.stdout.write(menu_entry[: num_cols - len(self._menu_cursor)])
+                if menu_index == self._view.selected_index:
                     sys.stdout.write(self._codename_to_terminal_code["reset_attributes"])
                 sys.stdout.write((num_cols - len(menu_entry) - len(self._menu_cursor)) * " ")
-                if i >= self._viewport.upper_index:
-                    break
-                if i < len(self._menu_entries) - 1:
+                if displayed_index < self._viewport.upper_index:
                     sys.stdout.write("\n")
+            empty_menu_lines = self._viewport.upper_index - displayed_index
+            sys.stdout.write(
+                max(0, empty_menu_lines - 1) * (num_cols * " " + "\n") + min(1, empty_menu_lines) * (num_cols * " ")
+            )
             sys.stdout.write("\r" + (self._viewport.size - 1) * self._codename_to_terminal_code["cursor_up"])
+            displayed_menu_height += self._viewport.size - 1  # sum all written lines
+            return displayed_menu_height
 
-        def print_preview(preview_max_num_lines: int) -> None:
+        def print_search_line() -> int:
+            # pylint: disable=unsubscriptable-object
+            # Do not clear the search line if the menu occupies the whole screen
+            # -> the search line is already overwritten by the menu entries
+            if not self._search and self._viewport.must_scroll:
+                return 0
+            displayed_menu_height = 0
+            num_cols = self._num_cols()
+            if self._search:
+                sys.stdout.write(self._viewport.size * self._codename_to_terminal_code["cursor_down"])
+                assert self._search.search_text is not None
+                sys.stdout.write(self._search_key if self._search_key is not None else DEFAULT_SEARCH_KEY)
+                sys.stdout.write(self._search.search_text)
+                sys.stdout.write((num_cols - len(self._search) - 1) * " ")
+                sys.stdout.write("\r" + self._viewport.size * self._codename_to_terminal_code["cursor_up"])
+                displayed_menu_height = 1
+            return displayed_menu_height
+
+        def print_preview(preview_max_num_lines: int) -> int:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
             if self._preview_command is None or preview_max_num_lines < 3:
-                return
+                return 0
 
             def get_preview_string() -> Optional[str]:
                 assert self._preview_command is not None
-                assert self._selected_index is not None
+                if self._view.selected_index is None:
+                    return None
                 preview_argument = (
-                    self._preview_arguments[self._selected_index]
-                    if self._preview_arguments[self._selected_index] is not None
-                    else self._menu_entries[self._selected_index]
+                    self._preview_arguments[self._view.selected_index]
+                    if self._preview_arguments[self._view.selected_index] is not None
+                    else self._menu_entries[self._view.selected_index]
                 )
                 if preview_argument == "":
                     return None
@@ -434,7 +678,9 @@ class TerminalMenu:
                     preview_string = strip_ansi_codes_except_styling(preview_string)
             except PreviewCommandFailedError as e:
                 preview_string = "The preview command failed with error message:\n\n" + str(e)
-            sys.stdout.write((self._viewport.size - 1) * self._codename_to_terminal_code["cursor_down"])
+            sys.stdout.write(
+                (self._viewport.size - (0 if self._search else 1)) * self._codename_to_terminal_code["cursor_down"]
+            )
             if preview_string is not None:
                 sys.stdout.write(
                     self._codename_to_terminal_code["cursor_down"]
@@ -481,22 +727,31 @@ class TerminalMenu:
                 )
             else:
                 preview_num_lines = 0
-            if self._previous_preview_num_lines is not None and self._previous_preview_num_lines > preview_num_lines:
-                sys.stdout.write(self._codename_to_terminal_code["cursor_down"])
+            sys.stdout.write(
+                (self._viewport.size - (0 if self._search else 1) + preview_num_lines)
+                * self._codename_to_terminal_code["cursor_up"]
+            )
+            return preview_num_lines
+
+        def delete_old_menu_lines() -> None:
+            # pylint: disable=unsubscriptable-object
+            assert self._codename_to_terminal_code is not None
+            if (
+                self._previous_displayed_menu_height is not None
+                and self._previous_displayed_menu_height > displayed_menu_height
+            ):
+                sys.stdout.write((displayed_menu_height + 1) * self._codename_to_terminal_code["cursor_down"])
                 sys.stdout.write(
-                    (self._previous_preview_num_lines - preview_num_lines)
+                    (self._previous_displayed_menu_height - displayed_menu_height)
                     * self._codename_to_terminal_code["delete_line"]
                 )
-                sys.stdout.write(self._codename_to_terminal_code["cursor_up"])
-            sys.stdout.write(
-                (self._viewport.size + preview_num_lines - 1) * self._codename_to_terminal_code["cursor_up"]
-            )
-            self._previous_preview_num_lines = preview_num_lines
+                sys.stdout.write((displayed_menu_height + 1) * self._codename_to_terminal_code["cursor_up"])
 
         def position_cursor() -> None:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
-            assert self._selected_index is not None
+            if self._view.selected_displayed_index is None:
+                return
             # delete the first column
             sys.stdout.write(
                 (self._viewport.size - 1)
@@ -507,37 +762,42 @@ class TerminalMenu:
             sys.stdout.write((self._viewport.size - 1) * self._codename_to_terminal_code["cursor_up"])
             # position cursor and print menu selection character
             sys.stdout.write(
-                (self._selected_index - self._viewport.lower_index) * self._codename_to_terminal_code["cursor_down"]
+                (self._view.selected_displayed_index - self._viewport.lower_index)
+                * self._codename_to_terminal_code["cursor_down"]
             )
             for style in self._menu_cursor_style:
                 sys.stdout.write(self._codename_to_terminal_code[style])
             sys.stdout.write(self._menu_cursor)
             sys.stdout.write(self._codename_to_terminal_code["reset_attributes"] + "\r")
             sys.stdout.write(
-                (self._selected_index - self._viewport.lower_index) * self._codename_to_terminal_code["cursor_up"]
+                (self._view.selected_displayed_index - self._viewport.lower_index)
+                * self._codename_to_terminal_code["cursor_up"]
             )
 
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
-        if self._selected_index is None:
-            self._selected_index = 0
+        displayed_menu_height = 0  # sum all written lines
         if self._preview_command is not None:
             self._viewport.preview_lines_count = int(self._preview_size * self._num_lines())
             preview_max_num_lines = self._viewport.preview_lines_count
-        self._viewport.keep_visible(self._selected_index)
-        print_menu_entries()
+        self._viewport.keep_visible(self._view.selected_index)
+        displayed_menu_height += print_menu_entries()
+        displayed_menu_height += print_search_line()
         if self._preview_command is not None:
-            print_preview(preview_max_num_lines)
+            displayed_menu_height += print_preview(preview_max_num_lines)
+        delete_old_menu_lines()
         position_cursor()
+        self._previous_displayed_menu_height = displayed_menu_height
+        sys.stdout.flush()
 
     def _clear_menu(self) -> None:
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
+        assert self._previous_displayed_menu_height is not None
         if self._title_lines:
             sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_up"])
             sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["delete_line"])
-        preview_num_lines = self._previous_preview_num_lines if self._previous_preview_num_lines is not None else 0
-        sys.stdout.write((self._viewport.size + preview_num_lines) * self._codename_to_terminal_code["delete_line"])
+        sys.stdout.write((self._previous_displayed_menu_height + 1) * self._codename_to_terminal_code["delete_line"])
         sys.stdout.flush()
 
     def _read_next_key(self, ignore_case: bool = True) -> str:
@@ -572,44 +832,71 @@ class TerminalMenu:
         def reset_signal_handling() -> None:
             signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
+        def remove_letter_keys(menu_action_to_keys: Dict[str, Set[Optional[str]]]) -> None:
+            letter_keys = frozenset(string.ascii_lowercase)
+            for keys in menu_action_to_keys.values():
+                keys -= letter_keys
+
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
         self._init_term()
-        self._selected_index = 0
         if self._title_lines:
             # `print_menu` expects the cursor on the first menu item -> reserve one line for the title
             sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_down"])
+        menu_was_interrupted = False
         try:
             init_signal_handling()
+            menu_action_to_keys = {
+                "menu_up": set(("up", "ctrl-k", "k")),
+                "menu_down": set(("down", "ctrl-j", "j")),
+                "select": set(("enter",)),
+                "quit": set(("escape", "q")),
+                "search_start": set((self._search_key,)),
+                "backspace": set(("backspace",)),
+            }  # type: Dict[str, Set[Optional[str]]]
             while True:
                 self._paint_menu()
-                next_key = self._read_next_key(ignore_case=True)
-                if next_key in ("up", "k"):
-                    self._selected_index -= 1
-                    if self._selected_index < 0:
-                        if self._cycle_cursor:
-                            self._selected_index = len(self._menu_entries) - 1
-                        else:
-                            self._selected_index = 0
-                elif next_key in ("down", "j"):
-                    self._selected_index += 1
-                    if self._selected_index >= len(self._menu_entries):
-                        if self._cycle_cursor:
-                            self._selected_index = 0
-                        else:
-                            self._selected_index = len(self._menu_entries) - 1
-                elif next_key in ("enter",):
+                current_menu_action_to_keys = copy.deepcopy(menu_action_to_keys)
+                next_key = self._read_next_key(ignore_case=False)
+                if self._search or self._search_key is None:
+                    remove_letter_keys(current_menu_action_to_keys)
+                else:
+                    next_key = next_key.lower()
+                if next_key in current_menu_action_to_keys["menu_up"]:
+                    self._view.decrement_selected_index()
+                elif next_key in current_menu_action_to_keys["menu_down"]:
+                    self._view.increment_selected_index()
+                elif next_key in current_menu_action_to_keys["select"]:
                     break
-                elif next_key in ("escape", "q"):
-                    self._selected_index = None
-                    break
+                elif next_key in current_menu_action_to_keys["quit"]:
+                    if not self._search:
+                        menu_was_interrupted = True
+                        break
+                    else:
+                        self._search.search_text = None
+                elif not self._search:
+                    if next_key in current_menu_action_to_keys["search_start"] or (
+                        self._search_key is None and next_key == DEFAULT_SEARCH_KEY
+                    ):
+                        self._search.search_text = ""
+                    elif self._search_key is None:
+                        self._search.search_text = next_key
+                else:
+                    assert self._search.search_text is not None
+                    if next_key in ("backspace",):
+                        if self._search.search_text != "":
+                            self._search.search_text = self._search.search_text[:-1]
+                        else:
+                            self._search.search_text = None
+                    else:
+                        self._search.search_text += next_key
         except KeyboardInterrupt:
-            self._selected_index = None
+            menu_was_interrupted = True
         finally:
             reset_signal_handling()
             self._clear_menu()
             self._reset_term()
-        return self._selected_index
+        return self._view.selected_index if not menu_was_interrupted else None
 
 
 class AttributeDict(dict):  # type: ignore
@@ -652,6 +939,14 @@ def get_argumentparser() -> argparse.ArgumentParser:
         default=",".join(DEFAULT_MENU_HIGHLIGHT_STYLE),
         help="style for the selected menu entry as comma separated list (default: %(default)s)",
     )
+    parser.add_argument(
+        "-n",
+        "--search_highlight_style",
+        action="store",
+        dest="search_highlight_style",
+        default=",".join(DEFAULT_SEARCH_HIGHLIGHT_STYLE),
+        help="style of matched search patterns (default: %(default)s)",
+    )
     parser.add_argument("-C", "--no-cycle", action="store_false", dest="cycle", help="do not cycle the menu selection")
     parser.add_argument(
         "-l",
@@ -680,6 +975,20 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help="maximum height of the preview window in fractions of the terminal height (default: %(default)s)",
     )
     parser.add_argument(
+        "-k",
+        "--search_key",
+        action="store",
+        dest="search_key",
+        default=DEFAULT_SEARCH_KEY,
+        help=(
+            'key to start a search (default: "%(default)s", '
+            '"none" is treated a special value which activates the search on any letter key)'
+        ),
+    )
+    parser.add_argument(
+        "-a", "--case_sensitive", action="store_true", dest="case_sensitive", help="searches are case sensitive"
+    )
+    parser.add_argument(
         "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
     )
     parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
@@ -699,6 +1008,12 @@ def parse_arguments() -> AttributeDict:
         args.highlight_style = tuple(args.highlight_style.split(","))
     else:
         args.highlight_style = None
+    if args.search_highlight_style != "":
+        args.search_highlight_style = tuple(args.search_highlight_style.split(","))
+    else:
+        args.search_highlight_style = None
+    if args.search_key.lower() == "none":
+        args.search_key = None
     return args
 
 
@@ -724,6 +1039,9 @@ def main() -> None:
             clear_screen=args.clear_screen,
             preview_command=args.preview_command,
             preview_size=args.preview_size,
+            search_key=args.search_key,
+            search_case_sensitive=args.case_sensitive,
+            search_highlight_style=args.search_highlight_style,
         )
     except InvalidStyleError as e:
         print(str(e), file=sys.stderr)

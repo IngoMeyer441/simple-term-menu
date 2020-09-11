@@ -23,7 +23,7 @@ yay -S python-simple-term-menu
 ```
 
 You also find a self-contained executable for 64-bit Linux distributions on the
-[releases page](https://github.com/IngoHeimbach/simple-term-menu/releases/latest). It is created with
+[releases page](https://github.com/IngoMeyer441/simple-term-menu/releases/latest). It is created with
 [PyInstaller](http://www.pyinstaller.org) on CentOS 7 and only requires glibc >= 2.17 (should be fine on any recent
 Linux system).
 
@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
 You will get an output like:
 
-![screenshot_basic](https://raw.githubusercontent.com/IngoHeimbach/simple-term-menu/master/basic.png)
+![screenshot_basic](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/basic.png)
 
 You can now select a menu entry with the arrow keys or `j`/`k` (vim motions) and accept your choice by hitting enter or
 cancel the menu with escape, `q` or `<Ctrl>-C`. `show` returns the selected menu entry index or `None` if the menu was
@@ -94,6 +94,22 @@ You can alter the following styles:
 
 By setting `menu_cursor` you can define another cursor or disable it (`None`). The default cursor is `"> "`.
 
+### Searching
+
+`simple_term_menu` has a built-in search feature to filter shown menu entries. The default key to activate search mode
+is `/` (like in Vim, less and other terminal programs). If you prefer another search key, pass a `search_key` parameter
+to the `TerminalMenu` constructor. `None` can be passed to activate the search on every letter key. Obviously, `j` and
+`k` cannot be used for cursor motions in that mode. Use `<Ctrl-j>` and `<Ctrl-k>` instead.
+
+The search mode supports Python regex syntax. Visit the
+[Python re documentation](https://docs.python.org/3/library/re.html#regular-expression-syntax) for more details.
+
+String parts of the menu entries which match the given search pattern are highlighted. Use the `search_highlight_style`
+parameter to adjust the highlight style to your liking.
+
+By default, the search is case insensitive. Set `search_case_sensitive` to `True` if you prefer a case sensitive search
+line.
+
 ### Preview window
 
 `simple-term-menu` can show a preview for each menu entry. Pass a `preview_command` to the `TerminalMenu` constructor to
@@ -134,7 +150,7 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
       main()
   ```
 
-  ![screenshot_preview_bat](https://raw.githubusercontent.com/IngoHeimbach/simple-term-menu/master/preview_bat.png)
+  ![screenshot_preview_bat](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/preview_bat.png)
 
 - Another file preview example using the [Pygments](https://pygments.org) api:
 
@@ -172,7 +188,7 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
       main()
   ```
 
-  ![screenshot_preview_pygments](https://raw.githubusercontent.com/IngoHeimbach/simple-term-menu/master/preview_pygments.png)
+  ![screenshot_preview_pygments](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/preview_pygments.png)
 
 - Preview the active pane of each running tmux session (the session ids are appended to the menu entries with the `|`
   separator):
@@ -211,7 +227,7 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
       main()
   ```
 
-  ![screenshot_preview_tmux_sessions](https://raw.githubusercontent.com/IngoHeimbach/simple-term-menu/master/preview_tmux_sessions.png)
+  ![screenshot_preview_tmux_sessions](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/preview_tmux_sessions.png)
 
 ### Additional settings
 
@@ -229,12 +245,14 @@ of the selected menu entry. The exit code 0 reports the cancel action. The follo
 supported:
 
 ```
-usage: simple_term_menu.py [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
-                           [-m HIGHLIGHT_STYLE] [-C] [-l] [-p PREVIEW_COMMAND]
-                           [--preview-size PREVIEW_SIZE] [-V]
-                           [entries [entries ...]]
+usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
+                        [-m HIGHLIGHT_STYLE] [-n SEARCH_HIGHLIGHT_STYLE] [-C]
+                        [-l] [-p PREVIEW_COMMAND]
+                        [--preview-size PREVIEW_SIZE] [-k SEARCH_KEY] [-a]
+                        [-V]
+                        [entries [entries ...]]
 
-simple_term_menu.py creates simple interactive menus in the terminal and returns the selected entry as exit code.
+simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
 
 positional arguments:
   entries               the menu entries to show
@@ -251,6 +269,9 @@ optional arguments:
   -m HIGHLIGHT_STYLE, --highlight_style HIGHLIGHT_STYLE
                         style for the selected menu entry as comma separated
                         list (default: standout)
+  -n SEARCH_HIGHLIGHT_STYLE, --search_highlight_style SEARCH_HIGHLIGHT_STYLE
+                        style of matched search patterns (default:
+                        fg_black,bg_yellow,bold)
   -C, --no-cycle        do not cycle the menu selection
   -l, --clear-screen    clear the screen before the menu is shown
   -p PREVIEW_COMMAND, --preview PREVIEW_COMMAND
@@ -261,6 +282,11 @@ optional arguments:
   --preview-size PREVIEW_SIZE
                         maximum height of the preview window in fractions of
                         the terminal height (default: 0.25)
+  -k SEARCH_KEY, --search_key SEARCH_KEY
+                        key to start a search (default: "/", "none" is treated
+                        a special value which activates the search on any
+                        letter key)
+  -a, --case_sensitive  searches are case sensitive
   -V, --version         print the version number and exit
 ```
 
@@ -283,7 +309,7 @@ A more advanced example with sub menus (thanks to [pageauc](https://github.com/p
 #!/usr/bin/env python3
 """
 Demonstration example for GitHub Project at
-https://github.com/IngoHeimbach/simple-term-menu
+https://github.com/IngoMeyer441/simple-term-menu
 
 This code only works in python3. Install per
 
