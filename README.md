@@ -90,7 +90,15 @@ You can alter the following styles:
 
 - `menu_cursor_style`: The style of the shown cursor. The default style is `("fg_red", "bold")`.
 
-- `menu_highlight_style`: The style of the selected menu entry. The default style is `("standout",)`
+- `menu_highlight_style`: The style of the selected menu entry. The default style is `("standout",)`.
+
+- `search_highlight_style`: The style of matched search strings. The default style is `("fg_black", "bg_yellow",
+  "bold")`.
+
+- `shortcut_key_highlight_style`: The style of shortcut keys. The default style is `("fg_blue",)`.
+
+- `shortcut_parentheses_highlight_style`: The style of parentheses enclosing shortcut keys. The default style is
+  `("fg_gray",)`.
 
 By setting `menu_cursor` you can define another cursor or disable it (`None`). The default cursor is `"> "`.
 
@@ -109,6 +117,40 @@ parameter to adjust the highlight style to your liking.
 
 By default, the search is case insensitive. Set `search_case_sensitive` to `True` if you prefer a case sensitive search
 line.
+
+### Shortcuts
+
+You can define shortcuts for selected menu entries by prepending a single character enclosed in square brackets (like
+`[a]`). Pass `shortcut_key_highlight_style` and/or `shortcut_parentheses_highlight_style` to the `TerminalMenu`
+constructor to change the default highlight style of the shortcuts.
+
+By default, the `show` method returns when a shortcut key is pressed. If you only want the selection to jump the
+shortcut target, pass `exit_on_shortcut=False` to the `TerminalMenu` constructor.
+
+If you configured the search to be activated on every letter key, the shortcut feature will be disabled.
+
+#### Shortcuts example
+
+Create a menu of some fruits and use the first letter as shortcut key:
+
+```python
+#!/usr/bin/env python3
+
+import os
+from simple_term_menu import TerminalMenu
+
+
+def main():
+    fruits = ["[a] apple", "[b] banana", "[o] orange"]
+    terminal_menu = TerminalMenu(fruits, title="Fruits")
+    terminal_menu.show()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+![screenshot_shortcuts](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/shortcuts.png)
 
 ### Preview window
 
@@ -246,10 +288,11 @@ supported:
 
 ```
 usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
-                        [-m HIGHLIGHT_STYLE] [-n SEARCH_HIGHLIGHT_STYLE] [-C]
-                        [-l] [-p PREVIEW_COMMAND]
-                        [--preview-size PREVIEW_SIZE] [-k SEARCH_KEY] [-a]
-                        [-V]
+                        [-m HIGHLIGHT_STYLE] [-n SEARCH_HIGHLIGHT_STYLE]
+                        [-o SHORTCUT_KEY_HIGHLIGHT_STYLE]
+                        [-q SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE] [-C] [-l]
+                        [-p PREVIEW_COMMAND] [--preview-size PREVIEW_SIZE]
+                        [-k SEARCH_KEY] [-a] [-E] [-V]
                         [entries [entries ...]]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
@@ -272,6 +315,11 @@ optional arguments:
   -n SEARCH_HIGHLIGHT_STYLE, --search_highlight_style SEARCH_HIGHLIGHT_STYLE
                         style of matched search patterns (default:
                         fg_black,bg_yellow,bold)
+  -o SHORTCUT_KEY_HIGHLIGHT_STYLE, --shortcut_key_highlight_style SHORTCUT_KEY_HIGHLIGHT_STYLE
+                        style of shortcut keys (default: fg_blue)
+  -q SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE, --shortcut_parentheses_highlight_style SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE
+                        style of parentheses enclosing shortcut keys (default:
+                        fg_gray)
   -C, --no-cycle        do not cycle the menu selection
   -l, --clear-screen    clear the screen before the menu is shown
   -p PREVIEW_COMMAND, --preview PREVIEW_COMMAND
@@ -287,6 +335,8 @@ optional arguments:
                         a special value which activates the search on any
                         letter key)
   -a, --case_sensitive  searches are case sensitive
+  -E, --no-exit-on-shortcut
+                        do not exit on shortcut keys
   -V, --version         print the version number and exit
 ```
 
