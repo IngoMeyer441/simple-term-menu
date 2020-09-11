@@ -888,7 +888,7 @@ class TerminalMenu:
                             self._search.search_text = self._search.search_text[:-1]
                         else:
                             self._search.search_text = None
-                    else:
+                    elif next_key not in current_menu_action_to_keys["search_start"] or self._search.search_text != "":
                         self._search.search_text += next_key
         except KeyboardInterrupt:
             menu_was_interrupted = True
