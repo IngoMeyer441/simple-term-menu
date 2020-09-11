@@ -39,7 +39,7 @@ __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2019 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (0, 7, 1)
+__version_info__ = (0, 8, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -52,6 +52,9 @@ DEFAULT_PREVIEW_SIZE = 0.25
 DEFAULT_SEARCH_KEY = "/"
 DEFAULT_SEARCH_CASE_SENSITIVE = False
 DEFAULT_SEARCH_HIGHLIGHT_STYLE = ("fg_black", "bg_yellow", "bold")
+DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE = ("fg_blue",)
+DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE = ("fg_gray",)
+DEFAULT_EXIT_ON_SHORTCUT = True
 MIN_VISIBLE_MENU_ENTRIES_COUNT = 3
 
 
@@ -206,6 +209,16 @@ class TerminalMenu:
                 return self._displayed_index_to_menu_index[self._selected_displayed_index]
             else:
                 return None
+
+        @selected_index.setter
+        def selected_index(self, value: str) -> None:
+            self._selected_index = value
+            self._selected_displayed_index = [
+                displayed_index
+                for displayed_index, menu_index in enumerate(self._displayed_index_to_menu_index)
+                if menu_index == value
+            ][0]
+            self._viewport.keep_visible(self._selected_displayed_index)
 
         @property
         def selected_displayed_index(self) -> Optional[int]:
@@ -372,25 +385,38 @@ class TerminalMenu:
         search_key: Optional[str] = DEFAULT_SEARCH_KEY,
         search_case_sensitive: bool = DEFAULT_SEARCH_CASE_SENSITIVE,
         search_highlight_style: Optional[Iterable[str]] = DEFAULT_SEARCH_HIGHLIGHT_STYLE,
+        shortcut_key_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE,
+        shortcut_parentheses_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE,
+        exit_on_shortcut: bool = DEFAULT_EXIT_ON_SHORTCUT,
     ):
-        def extract_menu_entries_and_preview_arguments(entries: Iterable[str]) -> Tuple[List[str], List[str]]:
+        def extract_shortcuts_menu_entries_and_preview_arguments(
+            entries: Iterable[str],
+        ) -> Tuple[List[str], List[str], List[str]]:
             separator_pattern = re.compile(r"([^\\])\|")
             escaped_separator_pattern = re.compile(r"\\\|")
-            menu_entry_pattern = re.compile(r"^([^\x1F]+)(\x1F([^\x1F]*))?")
+            menu_entry_pattern = re.compile(r"^(?:\[(\S)\]\s*)?([^\x1F]+)(?:\x1F([^\x1F]*))?")
+            shortcut_keys = []
             menu_entries = []
             preview_arguments = []
             for entry in entries:
                 unit_separated_entry = escaped_separator_pattern.sub("|", separator_pattern.sub("\\1\x1F", entry))
                 match_obj = menu_entry_pattern.match(unit_separated_entry)
                 assert match_obj is not None
-                display_text = match_obj.group(1)
+                shortcut_key = match_obj.group(1)
+                display_text = match_obj.group(2)
                 preview_argument = match_obj.group(3)
+                shortcut_keys.append(shortcut_key)
                 menu_entries.append(display_text)
                 preview_arguments.append(preview_argument)
-            return menu_entries, preview_arguments
+            return menu_entries, shortcut_keys, preview_arguments
 
         self._fd = sys.stdin.fileno()
-        self._menu_entries, self._preview_arguments = extract_menu_entries_and_preview_arguments(menu_entries)
+        (
+            self._menu_entries,
+            self._shortcut_keys,
+            self._preview_arguments,
+        ) = extract_shortcuts_menu_entries_and_preview_arguments(menu_entries)
+        self._shortcuts_defined = any(key is not None for key in self._shortcut_keys)
         if title is None:
             self._title_lines = ()  # type: Tuple[str, ...]
         elif isinstance(title, str):
@@ -407,6 +433,13 @@ class TerminalMenu:
         self._search_key = search_key
         self._search_case_sensitive = search_case_sensitive
         self._search_highlight_style = tuple(search_highlight_style) if search_highlight_style is not None else ()
+        self._shortcut_key_highlight_style = (
+            tuple(shortcut_key_highlight_style) if shortcut_key_highlight_style is not None else ()
+        )
+        self._shortcut_parentheses_highlight_style = (
+            tuple(shortcut_parentheses_highlight_style) if shortcut_parentheses_highlight_style is not None else ()
+        )
+        self._exit_on_shortcut = exit_on_shortcut
         self._search = self.Search(self._menu_entries, case_senitive=self._search_case_sensitive)
         self._viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), 0)
         self._view = self.View(self._menu_entries, self._search, self._viewport, self._cycle_cursor)
@@ -485,7 +518,13 @@ class TerminalMenu:
 
     def _check_for_valid_styles(self) -> None:
         invalid_styles = []
-        for style_tuple in (self._menu_cursor_style, self._menu_highlight_style, self._search_highlight_style):
+        for style_tuple in (
+            self._menu_cursor_style,
+            self._menu_highlight_style,
+            self._search_highlight_style,
+            self._shortcut_key_highlight_style,
+            self._shortcut_parentheses_highlight_style,
+        ):
             for style in style_tuple:
                 if style not in self._codename_to_capname:
                     invalid_styles.append(style)
@@ -522,6 +561,15 @@ class TerminalMenu:
             sys.stdout.write(self._codename_to_terminal_code["clear"])
 
     def _paint_menu(self) -> None:
+        def apply_style(style_iterable: Optional[Iterable[str]] = None, reset: bool = True) -> None:
+            # pylint: disable=unsubscriptable-object
+            assert self._codename_to_terminal_code is not None
+            if reset or style_iterable is None:
+                sys.stdout.write(self._codename_to_terminal_code["reset_attributes"])
+            if style_iterable is not None:
+                for style in style_iterable:
+                    sys.stdout.write(self._codename_to_terminal_code[style])
+
         def print_menu_entries() -> int:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
@@ -536,31 +584,49 @@ class TerminalMenu:
                     )
                     + "\n"
                 )
+            shortcut_string_len = 4 if self._shortcuts_defined else 0
             displayed_index = -1
             for displayed_index, menu_index, menu_entry in self._view:
+                current_shortcut_key = self._shortcut_keys[menu_index]
                 sys.stdout.write(len(self._menu_cursor) * " ")
+                if self._shortcuts_defined:
+                    if current_shortcut_key is not None:
+                        apply_style(self._shortcut_parentheses_highlight_style)
+                        sys.stdout.write("[")
+                        apply_style(self._shortcut_key_highlight_style)
+                        sys.stdout.write(current_shortcut_key)
+                        apply_style(self._shortcut_parentheses_highlight_style)
+                        sys.stdout.write("]")
+                        apply_style()
+                    else:
+                        sys.stdout.write(3 * " ")
+                    sys.stdout.write(" ")
                 if menu_index == self._view.selected_index:
-                    for style in self._menu_highlight_style:
-                        sys.stdout.write(self._codename_to_terminal_code[style])
+                    apply_style(self._menu_highlight_style)
                 if self._search and self._search.search_text != "":
                     match_obj = self._search.matches[displayed_index][1]
-                    sys.stdout.write(menu_entry[: min(match_obj.start(), num_cols - len(self._menu_cursor))])
-                    sys.stdout.write(self._codename_to_terminal_code["reset_attributes"])
-                    for style in self._search_highlight_style:
-                        sys.stdout.write(self._codename_to_terminal_code[style])
                     sys.stdout.write(
-                        menu_entry[match_obj.start() : min(match_obj.end(), num_cols - len(self._menu_cursor))]
+                        menu_entry[: min(match_obj.start(), num_cols - len(self._menu_cursor) - shortcut_string_len)]
                     )
-                    sys.stdout.write(self._codename_to_terminal_code["reset_attributes"])
+                    apply_style(self._search_highlight_style)
+                    sys.stdout.write(
+                        menu_entry[
+                            match_obj.start() : min(
+                                match_obj.end(), num_cols - len(self._menu_cursor) - shortcut_string_len
+                            )
+                        ]
+                    )
+                    apply_style()
                     if menu_index == self._view.selected_index:
-                        for style in self._menu_highlight_style:
-                            sys.stdout.write(self._codename_to_terminal_code[style])
-                    sys.stdout.write(menu_entry[match_obj.end() : num_cols - len(self._menu_cursor)])
+                        apply_style(self._menu_highlight_style)
+                    sys.stdout.write(
+                        menu_entry[match_obj.end() : num_cols - len(self._menu_cursor) - shortcut_string_len]
+                    )
                 else:
-                    sys.stdout.write(menu_entry[: num_cols - len(self._menu_cursor)])
+                    sys.stdout.write(menu_entry[: num_cols - len(self._menu_cursor) - shortcut_string_len])
                 if menu_index == self._view.selected_index:
-                    sys.stdout.write(self._codename_to_terminal_code["reset_attributes"])
-                sys.stdout.write((num_cols - len(menu_entry) - len(self._menu_cursor)) * " ")
+                    apply_style()
+                sys.stdout.write((num_cols - len(menu_entry) - len(self._menu_cursor) - shortcut_string_len) * " ")
                 if displayed_index < self._viewport.upper_index:
                     sys.stdout.write("\n")
             empty_menu_lines = self._viewport.upper_index - displayed_index
@@ -765,10 +831,10 @@ class TerminalMenu:
                 (self._view.selected_displayed_index - self._viewport.lower_index)
                 * self._codename_to_terminal_code["cursor_down"]
             )
-            for style in self._menu_cursor_style:
-                sys.stdout.write(self._codename_to_terminal_code[style])
+            apply_style(self._menu_cursor_style)
             sys.stdout.write(self._menu_cursor)
-            sys.stdout.write(self._codename_to_terminal_code["reset_attributes"] + "\r")
+            apply_style()
+            sys.stdout.write("\r")
             sys.stdout.write(
                 (self._view.selected_displayed_index - self._viewport.lower_index)
                 * self._codename_to_terminal_code["cursor_up"]
@@ -862,7 +928,11 @@ class TerminalMenu:
                     remove_letter_keys(current_menu_action_to_keys)
                 else:
                     next_key = next_key.lower()
-                if next_key in current_menu_action_to_keys["menu_up"]:
+                if self._search_key is not None and not self._search and next_key in self._shortcut_keys:
+                    self._view.selected_index = self._shortcut_keys.index(next_key)
+                    if self._exit_on_shortcut:
+                        break
+                elif next_key in current_menu_action_to_keys["menu_up"]:
                     self._view.decrement_selected_index()
                 elif next_key in current_menu_action_to_keys["menu_down"]:
                     self._view.increment_selected_index()
@@ -947,6 +1017,22 @@ def get_argumentparser() -> argparse.ArgumentParser:
         default=",".join(DEFAULT_SEARCH_HIGHLIGHT_STYLE),
         help="style of matched search patterns (default: %(default)s)",
     )
+    parser.add_argument(
+        "-o",
+        "--shortcut_key_highlight_style",
+        action="store",
+        dest="shortcut_key_highlight_style",
+        default=",".join(DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE),
+        help="style of shortcut keys (default: %(default)s)",
+    )
+    parser.add_argument(
+        "-q",
+        "--shortcut_parentheses_highlight_style",
+        action="store",
+        dest="shortcut_parentheses_highlight_style",
+        default=",".join(DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE),
+        help="style of parentheses enclosing shortcut keys (default: %(default)s)",
+    )
     parser.add_argument("-C", "--no-cycle", action="store_false", dest="cycle", help="do not cycle the menu selection")
     parser.add_argument(
         "-l",
@@ -989,6 +1075,13 @@ def get_argumentparser() -> argparse.ArgumentParser:
         "-a", "--case_sensitive", action="store_true", dest="case_sensitive", help="searches are case sensitive"
     )
     parser.add_argument(
+        "-E",
+        "--no-exit-on-shortcut",
+        action="store_false",
+        dest="exit_on_shortcut",
+        help="do not exit on shortcut keys",
+    )
+    parser.add_argument(
         "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
     )
     parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
@@ -1012,6 +1105,14 @@ def parse_arguments() -> AttributeDict:
         args.search_highlight_style = tuple(args.search_highlight_style.split(","))
     else:
         args.search_highlight_style = None
+    if args.shortcut_key_highlight_style != "":
+        args.shortcut_key_highlight_style = tuple(args.shortcut_key_highlight_style.split(","))
+    else:
+        args.shortcut_key_highlight_style = None
+    if args.shortcut_parentheses_highlight_style != "":
+        args.shortcut_parentheses_highlight_style = tuple(args.shortcut_parentheses_highlight_style.split(","))
+    else:
+        args.shortcut_parentheses_highlight_style = None
     if args.search_key.lower() == "none":
         args.search_key = None
     return args
@@ -1042,6 +1143,9 @@ def main() -> None:
             search_key=args.search_key,
             search_case_sensitive=args.case_sensitive,
             search_highlight_style=args.search_highlight_style,
+            shortcut_key_highlight_style=args.shortcut_key_highlight_style,
+            shortcut_parentheses_highlight_style=args.shortcut_parentheses_highlight_style,
+            exit_on_shortcut=args.exit_on_shortcut,
         )
     except InvalidStyleError as e:
         print(str(e), file=sys.stderr)
