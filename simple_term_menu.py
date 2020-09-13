@@ -56,6 +56,8 @@ DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE = ("fg_blue",)
 DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE = ("fg_gray",)
 DEFAULT_EXIT_ON_SHORTCUT = True
 DEFAULT_ACCEPT_KEYS = ("enter",)
+DEFAULT_SHOW_SEARCH_HINT = False
+DEFAULT_SHOW_SHORTCUT_HINTS = False
 MIN_VISIBLE_MENU_ENTRIES_COUNT = 3
 
 
@@ -101,9 +103,16 @@ class BoxDrawingCharacters:
 
 class TerminalMenu:
     class Search:
-        def __init__(self, menu_entries: Iterable[str], search_text: Optional[str] = None, case_senitive: bool = False):
+        def __init__(
+            self,
+            menu_entries: Iterable[str],
+            search_text: Optional[str] = None,
+            case_senitive: bool = False,
+            show_search_hint: bool = False,
+        ):
             self._menu_entries = menu_entries
             self._case_sensitive = case_senitive
+            self._show_search_hint = show_search_hint
             self._matches = []  # type: List[Tuple[int, Match[str]]]
             self._search_regex = None  # type: Optional[Pattern[str]]
             self._change_callback = None  # type: Optional[Callable[[], None]]
@@ -155,6 +164,13 @@ class TerminalMenu:
         def change_callback(self, callback: Optional[Callable[[], None]]) -> None:
             self._change_callback = callback
 
+        @property
+        def occupied_lines_count(self) -> int:
+            if not self and not self._show_search_hint:
+                return 0
+            else:
+                return 1
+
         def __bool__(self) -> bool:
             return self._search_text is not None
 
@@ -185,7 +201,7 @@ class TerminalMenu:
             else:
                 self._displayed_index_to_menu_index = tuple(range(len(self._menu_entries)))
             self._selected_displayed_index = 0 if self._displayed_index_to_menu_index else None
-            self._viewport.show_search_line = bool(self._search)
+            self._viewport.search_lines_count = self._search.occupied_lines_count
             self._viewport.keep_visible(self._selected_displayed_index)
 
         def increment_selected_index(self) -> None:
@@ -212,7 +228,7 @@ class TerminalMenu:
                 return None
 
         @selected_index.setter
-        def selected_index(self, value: str) -> None:
+        def selected_index(self, value: int) -> None:
             self._selected_index = value
             self._selected_displayed_index = [
                 displayed_index
@@ -236,13 +252,13 @@ class TerminalMenu:
             num_menu_entries: int,
             title_lines_count: int,
             preview_lines_count: int,
-            show_search_line: bool = False,
+            search_lines_count: int,
         ):
             self._num_menu_entries = num_menu_entries
             self._title_lines_count = title_lines_count
             # Use the property setter since it has some more logic
             self.preview_lines_count = preview_lines_count
-            self.show_search_line = show_search_line
+            self.search_lines_count = search_lines_count
             self._num_lines = self._calculate_num_lines()
             self._viewport = (0, min(self._num_menu_entries, self._num_lines) - 1)
             self.keep_visible(cursor_position=None, refresh_terminal_size=False)
@@ -252,7 +268,7 @@ class TerminalMenu:
                 TerminalMenu._num_lines()
                 - self._title_lines_count
                 - self._preview_lines_count
-                - int(self._show_search_line)
+                - self._search_lines_count
             )
 
         def keep_visible(self, cursor_position: Optional[int], refresh_terminal_size: bool = True) -> None:
@@ -316,12 +332,12 @@ class TerminalMenu:
             )
 
         @property
-        def show_search_line(self) -> bool:
-            return self._show_search_line
+        def search_lines_count(self) -> int:
+            return self._search_lines_count
 
-        @show_search_line.setter
-        def show_search_line(self, value: bool) -> None:
-            self._show_search_line = value
+        @search_lines_count.setter
+        def search_lines_count(self, value: int) -> None:
+            self._search_lines_count = value
 
         @property
         def must_scroll(self) -> bool:
@@ -390,6 +406,8 @@ class TerminalMenu:
         shortcut_parentheses_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE,
         exit_on_shortcut: bool = DEFAULT_EXIT_ON_SHORTCUT,
         accept_keys: Iterable[str] = DEFAULT_ACCEPT_KEYS,
+        show_search_hint: bool = DEFAULT_SHOW_SEARCH_HINT,
+        show_shortcut_hints: bool = DEFAULT_SHOW_SHORTCUT_HINTS,
     ):
         def extract_shortcuts_menu_entries_and_preview_arguments(
             entries: Iterable[str],
@@ -412,6 +430,32 @@ class TerminalMenu:
                 preview_arguments.append(preview_argument)
             return menu_entries, shortcut_keys, preview_arguments
 
+        def setup_title_lines(
+            title: Optional[Union[str, Iterable[str]]],
+            show_shortcut_hints: bool,
+            menu_entries: Iterable[str],
+            shortcut_keys: Iterable[str],
+        ) -> Tuple[str, ...]:
+            if title is None:
+                title_lines = []  # type: List[str]
+            elif isinstance(title, str):
+                title_lines = title.split("\n")
+            else:
+                title_lines = list(title)
+            if show_shortcut_hints:
+                shortcut_hints_line = (
+                    "("
+                    + ", ".join(
+                        "[{}]: {}".format(shortcut_key, menu_entry)
+                        for shortcut_key, menu_entry in zip(shortcut_keys, menu_entries)
+                        if shortcut_key is not None
+                    )
+                    + ")"
+                )
+                if shortcut_hints_line != "()":
+                    title_lines.append(shortcut_hints_line)
+            return tuple(title_lines)
+
         self._fd = sys.stdin.fileno()
         (
             self._menu_entries,
@@ -419,12 +463,7 @@ class TerminalMenu:
             self._preview_arguments,
         ) = extract_shortcuts_menu_entries_and_preview_arguments(menu_entries)
         self._shortcuts_defined = any(key is not None for key in self._shortcut_keys)
-        if title is None:
-            self._title_lines = ()  # type: Tuple[str, ...]
-        elif isinstance(title, str):
-            self._title_lines = tuple(title.split("\n"))
-        else:
-            self._title_lines = tuple(title)
+        self._title_lines = setup_title_lines(title, show_shortcut_hints, self._menu_entries, self._shortcut_keys)
         self._menu_cursor = menu_cursor if menu_cursor is not None else ""
         self._menu_cursor_style = tuple(menu_cursor_style) if menu_cursor_style is not None else ()
         self._menu_highlight_style = tuple(menu_highlight_style) if menu_highlight_style is not None else ()
@@ -443,9 +482,13 @@ class TerminalMenu:
         )
         self._exit_on_shortcut = exit_on_shortcut
         self._accept_keys = tuple(accept_keys)
+        self._show_search_hint = show_search_hint
+        self._show_shortcut_hints = show_shortcut_hints
         self._chosen_accept_key = None  # type: Optional[str]
-        self._search = self.Search(self._menu_entries, case_senitive=self._search_case_sensitive)
-        self._viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), 0)
+        self._search = self.Search(
+            self._menu_entries, case_senitive=self._search_case_sensitive, show_search_hint=self._show_search_hint
+        )
+        self._viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), 0, 0)
         self._view = self.View(self._menu_entries, self._search, self._viewport, self._cycle_cursor)
         self._search.change_callback = self._view.update_view
         self._previous_displayed_menu_height = None  # type: Optional[int]
@@ -665,18 +708,27 @@ class TerminalMenu:
 
         def print_search_line() -> int:
             # pylint: disable=unsubscriptable-object
-            # Do not clear the search line if the menu occupies the whole screen
-            # -> the search line is already overwritten by the menu entries
-            if not self._search and self._viewport.must_scroll:
-                return 0
             displayed_menu_height = 0
             num_cols = self._num_cols()
-            if self._search:
+            if self._search or self._show_search_hint:
                 sys.stdout.write(self._viewport.size * self._codename_to_terminal_code["cursor_down"])
+            if self._search:
                 assert self._search.search_text is not None
-                sys.stdout.write(self._search_key if self._search_key is not None else DEFAULT_SEARCH_KEY)
-                sys.stdout.write(self._search.search_text)
+                sys.stdout.write(
+                    (
+                        (self._search_key if self._search_key is not None else DEFAULT_SEARCH_KEY)
+                        + self._search.search_text
+                    )[:num_cols]
+                )
                 sys.stdout.write((num_cols - len(self._search) - 1) * " ")
+            elif self._show_search_hint:
+                if self._search_key is not None:
+                    search_hint = '(Press "{}" to search)'.format(self._search_key)[:num_cols]
+                else:
+                    search_hint = "(Press any letter key to search)"[:num_cols]
+                sys.stdout.write(search_hint)
+                sys.stdout.write((num_cols - len(search_hint)) * " ")
+            if self._search or self._show_search_hint:
                 sys.stdout.write("\r" + self._viewport.size * self._codename_to_terminal_code["cursor_up"])
                 displayed_menu_height = 1
             return displayed_menu_height
@@ -771,7 +823,8 @@ class TerminalMenu:
             except PreviewCommandFailedError as e:
                 preview_string = "The preview command failed with error message:\n\n" + str(e)
             sys.stdout.write(
-                (self._viewport.size - (0 if self._search else 1)) * self._codename_to_terminal_code["cursor_down"]
+                (self._viewport.size + self._search.occupied_lines_count - 1)
+                * self._codename_to_terminal_code["cursor_down"]
             )
             if preview_string is not None:
                 sys.stdout.write(
@@ -820,7 +873,7 @@ class TerminalMenu:
             else:
                 preview_num_lines = 0
             sys.stdout.write(
-                (self._viewport.size - (0 if self._search else 1) + preview_num_lines)
+                (self._viewport.size + self._search.occupied_lines_count + preview_num_lines - 1)
                 * self._codename_to_terminal_code["cursor_up"]
             )
             return preview_num_lines
@@ -1113,6 +1166,20 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help="do not exit on shortcut keys",
     )
     parser.add_argument(
+        "-u",
+        "--show-search_hint",
+        action="store_true",
+        dest="show_search_hint",
+        help="show a search hint in the search line",
+    )
+    parser.add_argument(
+        "-v",
+        "--show-shortcut_hints",
+        action="store_true",
+        dest="show_shortcut_hints",
+        help="show shortcut hints in the menu title",
+    )
+    parser.add_argument(
         "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
     )
     parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
@@ -1177,6 +1244,8 @@ def main() -> None:
             shortcut_key_highlight_style=args.shortcut_key_highlight_style,
             shortcut_parentheses_highlight_style=args.shortcut_parentheses_highlight_style,
             exit_on_shortcut=args.exit_on_shortcut,
+            show_search_hint=args.show_search_hint,
+            show_shortcut_hints=args.show_shortcut_hints,
         )
     except InvalidStyleError as e:
         print(str(e), file=sys.stderr)
