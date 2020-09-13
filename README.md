@@ -9,7 +9,7 @@ Currently, Linux and macOS are supported.
 
 ## Installation
 
-`simple-term-menu` is available on PyPI for Python 3.3+ and can be installed with `pip`:
+`simple-term-menu` is available on PyPI for Python 3.5+ and can be installed with `pip`:
 
 ```bash
 python3 -m pip install simple-term-menu
