@@ -9,7 +9,7 @@ Currently, Linux and macOS are supported.
 
 ## Installation
 
-`simple-term-menu` is available on PyPI for Python 3.3+ and can be installed with `pip`:
+`simple-term-menu` is available on PyPI for Python 3.5+ and can be installed with `pip`:
 
 ```bash
 python3 -m pip install simple-term-menu
@@ -42,7 +42,7 @@ from simple_term_menu import TerminalMenu
 
 def main():
     terminal_menu = TerminalMenu(["entry 1", "entry 2", "entry 3"])
-    terminal_menu.show()
+    menu_entry_index = terminal_menu.show()
 
 
 if __name__ == "__main__":
@@ -118,6 +118,9 @@ parameter to adjust the highlight style to your liking.
 By default, the search is case insensitive. Set `search_case_sensitive` to `True` if you prefer a case sensitive search
 line.
 
+Pass `show_search_hint=True` to the `TerminalMenu` constructor to activate a search hint in the search line (like
+`(Press "/" to search)`).
+
 ### Shortcuts
 
 You can define shortcuts for selected menu entries by prepending a single character enclosed in square brackets (like
@@ -128,6 +131,9 @@ By default, the `show` method returns when a shortcut key is pressed. If you onl
 shortcut target, pass `exit_on_shortcut=False` to the `TerminalMenu` constructor.
 
 If you configured the search to be activated on every letter key, the shortcut feature will be disabled.
+
+Pass `show_shortcut_hints=True` to the `TerminalMenu` constructor to display shortcut hints in the menu title (useful
+for very long menus which need scrolling).
 
 #### Shortcuts example
 
@@ -143,7 +149,7 @@ from simple_term_menu import TerminalMenu
 def main():
     fruits = ["[a] apple", "[b] banana", "[o] orange"]
     terminal_menu = TerminalMenu(fruits, title="Fruits")
-    terminal_menu.show()
+    menu_entry_index = terminal_menu.show()
 
 
 if __name__ == "__main__":
@@ -174,7 +180,7 @@ from simple_term_menu import TerminalMenu
 
 def main():
     terminal_menu = TerminalMenu(["entry 1", "entry 2", "entry 3"], accept_keys=("enter", "alt-d", "ctrl-i"))
-    terminal_menu.show()
+    menu_entry_index = terminal_menu.show()
     print(terminal_menu.chosen_accept_key)
 
 
@@ -216,7 +222,7 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
 
   def main():
       terminal_menu = TerminalMenu(list_files(), preview_command="bat --color=always {}", preview_size=0.75)
-      terminal_menu.show()
+      menu_entry_index = terminal_menu.show()
 
 
   if __name__ == "__main__":
@@ -254,7 +260,7 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
 
   def main():
       terminal_menu = TerminalMenu(list_files(), preview_command=highlight_file, preview_size=0.75)
-      terminal_menu.show()
+      menu_entry_index = terminal_menu.show()
 
 
   if __name__ == "__main__":
@@ -293,7 +299,7 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
           preview_command="tmux capture-pane -e -p -t {}",
           preview_size=0.75,
       )
-      terminal_menu.show()
+      menu_entry_index = terminal_menu.show()
 
 
   if __name__ == "__main__":
@@ -323,7 +329,7 @@ usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
                         [-o SHORTCUT_KEY_HIGHLIGHT_STYLE]
                         [-q SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE] [-C] [-l]
                         [-p PREVIEW_COMMAND] [--preview-size PREVIEW_SIZE]
-                        [-k SEARCH_KEY] [-a] [-E] [-V]
+                        [-k SEARCH_KEY] [-a] [-E] [-u] [-v] [-V]
                         [entries [entries ...]]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
@@ -368,6 +374,10 @@ optional arguments:
   -a, --case_sensitive  searches are case sensitive
   -E, --no-exit-on-shortcut
                         do not exit on shortcut keys
+  -u, --show-search_hint
+                        show a search hint in the search line
+  -v, --show-shortcut_hints
+                        show shortcut hints in the menu title
   -V, --version         print the version number and exit
 ```
 
