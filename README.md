@@ -42,7 +42,7 @@ from simple_term_menu import TerminalMenu
 
 def main():
     terminal_menu = TerminalMenu(["entry 1", "entry 2", "entry 3"])
-    terminal_menu.show()
+    menu_entry_index = terminal_menu.show()
 
 
 if __name__ == "__main__":
@@ -149,7 +149,7 @@ from simple_term_menu import TerminalMenu
 def main():
     fruits = ["[a] apple", "[b] banana", "[o] orange"]
     terminal_menu = TerminalMenu(fruits, title="Fruits")
-    terminal_menu.show()
+    menu_entry_index = terminal_menu.show()
 
 
 if __name__ == "__main__":
@@ -180,7 +180,7 @@ from simple_term_menu import TerminalMenu
 
 def main():
     terminal_menu = TerminalMenu(["entry 1", "entry 2", "entry 3"], accept_keys=("enter", "alt-d", "ctrl-i"))
-    terminal_menu.show()
+    menu_entry_index = terminal_menu.show()
     print(terminal_menu.chosen_accept_key)
 
 
@@ -222,7 +222,7 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
 
   def main():
       terminal_menu = TerminalMenu(list_files(), preview_command="bat --color=always {}", preview_size=0.75)
-      terminal_menu.show()
+      menu_entry_index = terminal_menu.show()
 
 
   if __name__ == "__main__":
@@ -260,7 +260,7 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
 
   def main():
       terminal_menu = TerminalMenu(list_files(), preview_command=highlight_file, preview_size=0.75)
-      terminal_menu.show()
+      menu_entry_index = terminal_menu.show()
 
 
   if __name__ == "__main__":
@@ -299,7 +299,7 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
           preview_command="tmux capture-pane -e -p -t {}",
           preview_size=0.75,
       )
-      terminal_menu.show()
+      menu_entry_index = terminal_menu.show()
 
 
   if __name__ == "__main__":
