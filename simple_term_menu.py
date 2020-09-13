@@ -485,6 +485,7 @@ class TerminalMenu:
         self._show_search_hint = show_search_hint
         self._show_shortcut_hints = show_shortcut_hints
         self._chosen_accept_key = None  # type: Optional[str]
+        self._chosen_menu_index = None  # type: Optional[int]
         self._search = self.Search(
             self._menu_entries, case_senitive=self._search_case_sensitive, show_search_hint=self._show_search_hint
         )
@@ -1046,11 +1047,20 @@ class TerminalMenu:
             reset_signal_handling()
             self._clear_menu()
             self._reset_term()
-        return self._view.selected_index if not menu_was_interrupted else None
+        self._chosen_menu_index = self._view.selected_index if not menu_was_interrupted else None
+        return self._chosen_menu_index
 
     @property
     def chosen_accept_key(self) -> Optional[str]:
         return self._chosen_accept_key
+
+    @property
+    def chosen_menu_entry(self) -> Optional[str]:
+        return self._menu_entries[self._chosen_menu_index] if self._chosen_menu_index is not None else None
+
+    @property
+    def chosen_menu_index(self) -> Optional[int]:
+        return self._chosen_menu_index
 
 
 class AttributeDict(dict):  # type: ignore
