@@ -22,9 +22,9 @@ If you use Arch Linux or one of its derivatives, you can also install `simple-te
 yay -S python-simple-term-menu
 ```
 
-You also find a self-contained executable for 64-bit Linux distributions on the
-[releases page](https://github.com/IngoMeyer441/simple-term-menu/releases/latest). It is created with
-[PyInstaller](http://www.pyinstaller.org) on CentOS 7 and only requires glibc >= 2.17 (should be fine on any recent
+You also find self-contained executables for 64-bit Linux distributions and macOS Catalina and newer on the
+[releases page](https://github.com/IngoMeyer441/simple-term-menu/releases/latest). They are created with
+[PyInstaller](http://www.pyinstaller.org) and only require glibc >= 2.17 on Linux (should be fine on any recent
 Linux system).
 
 ## Usage

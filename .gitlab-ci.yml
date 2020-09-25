@@ -18,6 +18,20 @@ build-linux-executable:
     paths:
       - dist/
 
+build-macos-executable:
+  stage: build
+  image: macos:catalina-xcode-python3
+  tags:
+    - libvirt
+  script:
+    - python3 setup.py bdist_pyinstaller
+    - PLATFORM=$(python3 -c 'import platform; print("{}_{}".format(platform.system(), platform.machine()).lower())');
+      mv "dist/${CI_PROJECT_NAME}" "dist/${CI_PROJECT_NAME}_${PLATFORM}"
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - dist/
+
 deploy-to-github:
   stage: deploy
   image: iffregistry.fz-juelich.de/docker-images/gr-build-images/deploy
