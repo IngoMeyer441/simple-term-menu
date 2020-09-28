@@ -20,7 +20,7 @@ build-linux-executable:
 
 build-macos-executable:
   stage: build
-  image: macos:catalina-xcode-python3
+  image: macos:high-sierra-xcode-python3
   tags:
     - libvirt
   script:
