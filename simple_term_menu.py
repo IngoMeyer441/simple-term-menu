@@ -4,6 +4,7 @@ import argparse
 import copy
 import ctypes
 import os
+import platform
 import re
 import shlex
 import signal
@@ -31,8 +32,6 @@ from typing import (
 try:
     import termios
 except ImportError:
-    import platform
-
     raise NotImplementedError('"{}" is currently not supported.'.format(platform.system()))
 
 
@@ -76,7 +75,10 @@ class PreviewCommandFailedError(Exception):
 
 def wcswidth(text: str) -> int:
     if not hasattr(wcswidth, "libc"):
-        wcswidth.libc = ctypes.cdll.LoadLibrary("libc.so.6")
+        if platform.system() == "Darwin":
+            wcswidth.libc = ctypes.cdll.LoadLibrary("libSystem.dylib")
+        else:
+            wcswidth.libc = ctypes.cdll.LoadLibrary("libc.so.6")
     return wcswidth.libc.wcswidth(ctypes.c_wchar_p(text), len(text.encode()))
 
 
