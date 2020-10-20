@@ -2,7 +2,9 @@
 
 import argparse
 import copy
+import ctypes
 import os
+import platform
 import re
 import shlex
 import signal
@@ -30,8 +32,6 @@ from typing import (
 try:
     import termios
 except ImportError:
-    import platform
-
     raise NotImplementedError('"{}" is currently not supported.'.format(platform.system()))
 
 
@@ -39,7 +39,7 @@ __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2019 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (0, 10, 2)
+__version_info__ = (0, 10, 3)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -71,6 +71,15 @@ class NoMenuEntriesError(Exception):
 
 class PreviewCommandFailedError(Exception):
     pass
+
+
+def wcswidth(text: str) -> int:
+    if not hasattr(wcswidth, "libc"):
+        if platform.system() == "Darwin":
+            wcswidth.libc = ctypes.cdll.LoadLibrary("libSystem.dylib")
+        else:
+            wcswidth.libc = ctypes.cdll.LoadLibrary("libc.so.6")
+    return wcswidth.libc.wcswidth(ctypes.c_wchar_p(text), len(text.encode()))
 
 
 def static_variables(**variables: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
@@ -178,7 +187,7 @@ class TerminalMenu:
             return any(i == menu_index for i, _ in self._matches)
 
         def __len__(self) -> int:
-            return len(self._search_text) if self._search_text is not None else 0
+            return wcswidth(self._search_text) if self._search_text is not None else 0
 
     class View:
         def __init__(
@@ -650,7 +659,8 @@ class TerminalMenu:
                     len(self._title_lines) * self._codename_to_terminal_code["cursor_up"]
                     + "\r"
                     + "\n".join(
-                        (title_line[:num_cols] + (num_cols - len(title_line)) * " ") for title_line in self._title_lines
+                        (title_line[:num_cols] + (num_cols - wcswidth(title_line)) * " ")
+                        for title_line in self._title_lines
                     )
                     + "\n"
                 )
@@ -658,7 +668,7 @@ class TerminalMenu:
             displayed_index = -1
             for displayed_index, menu_index, menu_entry in self._view:
                 current_shortcut_key = self._shortcut_keys[menu_index]
-                sys.stdout.write(len(self._menu_cursor) * " ")
+                sys.stdout.write(wcswidth(self._menu_cursor) * " ")
                 if self._shortcuts_defined:
                     if current_shortcut_key is not None:
                         apply_style(self._shortcut_parentheses_highlight_style)
@@ -676,13 +686,15 @@ class TerminalMenu:
                 if self._search and self._search.search_text != "":
                     match_obj = self._search.matches[displayed_index][1]
                     sys.stdout.write(
-                        menu_entry[: min(match_obj.start(), num_cols - len(self._menu_cursor) - shortcut_string_len)]
+                        menu_entry[
+                            : min(match_obj.start(), num_cols - wcswidth(self._menu_cursor) - shortcut_string_len)
+                        ]
                     )
                     apply_style(self._search_highlight_style)
                     sys.stdout.write(
                         menu_entry[
                             match_obj.start() : min(
-                                match_obj.end(), num_cols - len(self._menu_cursor) - shortcut_string_len
+                                match_obj.end(), num_cols - wcswidth(self._menu_cursor) - shortcut_string_len
                             )
                         ]
                     )
@@ -690,13 +702,15 @@ class TerminalMenu:
                     if menu_index == self._view.selected_index:
                         apply_style(self._menu_highlight_style)
                     sys.stdout.write(
-                        menu_entry[match_obj.end() : num_cols - len(self._menu_cursor) - shortcut_string_len]
+                        menu_entry[match_obj.end() : num_cols - wcswidth(self._menu_cursor) - shortcut_string_len]
                     )
                 else:
-                    sys.stdout.write(menu_entry[: num_cols - len(self._menu_cursor) - shortcut_string_len])
+                    sys.stdout.write(menu_entry[: num_cols - wcswidth(self._menu_cursor) - shortcut_string_len])
                 if menu_index == self._view.selected_index:
                     apply_style()
-                sys.stdout.write((num_cols - len(menu_entry) - len(self._menu_cursor) - shortcut_string_len) * " ")
+                sys.stdout.write(
+                    (num_cols - wcswidth(menu_entry) - wcswidth(self._menu_cursor) - shortcut_string_len) * " "
+                )
                 if displayed_index < self._viewport.upper_index:
                     sys.stdout.write("\n")
             empty_menu_lines = self._viewport.upper_index - displayed_index
@@ -728,7 +742,7 @@ class TerminalMenu:
                 else:
                     search_hint = "(Press any letter key to search)"[:num_cols]
                 sys.stdout.write(search_hint)
-                sys.stdout.write((num_cols - len(search_hint)) * " ")
+                sys.stdout.write((num_cols - wcswidth(search_hint)) * " ")
             if self._search or self._show_search_hint:
                 sys.stdout.write("\r" + self._viewport.size * self._codename_to_terminal_code["cursor_up"])
                 displayed_menu_height = 1
@@ -792,7 +806,7 @@ class TerminalMenu:
                     regular_text_match = limit_string_with_escape_codes.regular_text_regex.match(string)  # type: ignore
                     if regular_text_match is not None:
                         regular_text = regular_text_match.group(1)
-                        regular_text_len = len(regular_text)
+                        regular_text_len = wcswidth(regular_text)
                         if string_len + regular_text_len > max_len:
                             string_parts.append(regular_text[: max_len - string_len])
                             string_len = max_len
@@ -901,8 +915,8 @@ class TerminalMenu:
             # delete the first column
             sys.stdout.write(
                 (self._viewport.size - 1)
-                * (len(self._menu_cursor) * " " + "\r" + self._codename_to_terminal_code["cursor_down"])
-                + len(self._menu_cursor) * " "
+                * (wcswidth(self._menu_cursor) * " " + "\r" + self._codename_to_terminal_code["cursor_down"])
+                + wcswidth(self._menu_cursor) * " "
                 + "\r"
             )
             sys.stdout.write((self._viewport.size - 1) * self._codename_to_terminal_code["cursor_up"])
