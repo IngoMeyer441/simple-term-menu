@@ -25,6 +25,7 @@ from typing import (
     Optional,
     Pattern,
     Set,
+    TextIO,
     Tuple,
     Union,
 )
@@ -465,7 +466,6 @@ class TerminalMenu:
                     title_lines.append(shortcut_hints_line)
             return tuple(title_lines)
 
-        self._fd = sys.stdin.fileno()
         (
             self._menu_entries,
             self._shortcut_keys,
@@ -504,6 +504,8 @@ class TerminalMenu:
         self._previous_displayed_menu_height = None  # type: Optional[int]
         self._reading_next_key = False
         self._paint_before_next_read = False
+        self._tty_in = None  # type: Optional[TextIO]
+        self._tty_out = None  # type: Optional[TextIO]
         self._old_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._new_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._check_for_valid_styles()
@@ -535,7 +537,8 @@ class TerminalMenu:
     @classmethod
     def _init_backspace_control_character(self) -> None:
         try:
-            stty_output = subprocess.check_output(["stty", "-a"], universal_newlines=True)
+            with open("/dev/tty", "r") as tty:
+                stty_output = subprocess.check_output(["stty", "-a"], universal_newlines=True, stdin=tty)
             name_to_keycode_regex = re.compile(r"^\s*(\S+)\s*=\s*\^(\S+)\s*$")
             for field in stty_output.split(";"):
                 match_obj = name_to_keycode_regex.match(field)
@@ -616,46 +619,54 @@ class TerminalMenu:
     def _init_term(self) -> None:
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
-        self._old_term = termios.tcgetattr(self._fd)
-        self._new_term = termios.tcgetattr(self._fd)
+        self._tty_in = open("/dev/tty", "r")
+        self._tty_out = open("/dev/tty", "w")
+        self._old_term = termios.tcgetattr(self._tty_in.fileno())
+        self._new_term = termios.tcgetattr(self._tty_in.fileno())
         # set the terminal to: unbuffered, no echo and no <CR> to <NL> translation (so <enter> sends <CR> instead of
         # <NL, this is necessary to distinguish between <enter> and <Ctrl-j> since <Ctrl-j> generates <NL>)
         self._new_term[3] = cast(int, self._new_term[3]) & ~termios.ICANON & ~termios.ECHO & ~termios.ICRNL
         self._new_term[0] = cast(int, self._new_term[0]) & ~termios.ICRNL
-        termios.tcsetattr(self._fd, termios.TCSAFLUSH, self._new_term)
+        termios.tcsetattr(self._tty_in.fileno(), termios.TCSAFLUSH, self._new_term)
         # Enter terminal application mode to get expected escape codes for arrow keys
-        sys.stdout.write(self._codename_to_terminal_code["enter_application_mode"])
-        sys.stdout.write(self._codename_to_terminal_code["cursor_invisible"])
+        self._tty_out.write(self._codename_to_terminal_code["enter_application_mode"])
+        self._tty_out.write(self._codename_to_terminal_code["cursor_invisible"])
         if self._clear_screen:
-            sys.stdout.write(self._codename_to_terminal_code["clear"])
+            self._tty_out.write(self._codename_to_terminal_code["clear"])
 
     def _reset_term(self) -> None:
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
+        assert self._tty_in is not None
+        assert self._tty_out is not None
         assert self._old_term is not None
-        termios.tcsetattr(self._fd, termios.TCSAFLUSH, self._old_term)
-        sys.stdout.write(self._codename_to_terminal_code["cursor_visible"])
-        sys.stdout.write(self._codename_to_terminal_code["exit_application_mode"])
+        termios.tcsetattr(self._tty_out.fileno(), termios.TCSAFLUSH, self._old_term)
+        self._tty_out.write(self._codename_to_terminal_code["cursor_visible"])
+        self._tty_out.write(self._codename_to_terminal_code["exit_application_mode"])
         if self._clear_screen:
-            sys.stdout.write(self._codename_to_terminal_code["clear"])
+            self._tty_out.write(self._codename_to_terminal_code["clear"])
+        self._tty_in.close()
+        self._tty_out.close()
 
     def _paint_menu(self) -> None:
         def apply_style(style_iterable: Optional[Iterable[str]] = None, reset: bool = True) -> None:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
+            assert self._tty_out is not None
             if reset or style_iterable is None:
-                sys.stdout.write(self._codename_to_terminal_code["reset_attributes"])
+                self._tty_out.write(self._codename_to_terminal_code["reset_attributes"])
             if style_iterable is not None:
                 for style in style_iterable:
-                    sys.stdout.write(self._codename_to_terminal_code[style])
+                    self._tty_out.write(self._codename_to_terminal_code[style])
 
         def print_menu_entries() -> int:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
+            assert self._tty_out is not None
             displayed_menu_height = 0  # sum all written lines
             num_cols = self._num_cols()
             if self._title_lines:
-                sys.stdout.write(
+                self._tty_out.write(
                     len(self._title_lines) * self._codename_to_terminal_code["cursor_up"]
                     + "\r"
                     + "\n".join(
@@ -668,30 +679,30 @@ class TerminalMenu:
             displayed_index = -1
             for displayed_index, menu_index, menu_entry in self._view:
                 current_shortcut_key = self._shortcut_keys[menu_index]
-                sys.stdout.write(wcswidth(self._menu_cursor) * " ")
+                self._tty_out.write(wcswidth(self._menu_cursor) * " ")
                 if self._shortcuts_defined:
                     if current_shortcut_key is not None:
                         apply_style(self._shortcut_parentheses_highlight_style)
-                        sys.stdout.write("[")
+                        self._tty_out.write("[")
                         apply_style(self._shortcut_key_highlight_style)
-                        sys.stdout.write(current_shortcut_key)
+                        self._tty_out.write(current_shortcut_key)
                         apply_style(self._shortcut_parentheses_highlight_style)
-                        sys.stdout.write("]")
+                        self._tty_out.write("]")
                         apply_style()
                     else:
-                        sys.stdout.write(3 * " ")
-                    sys.stdout.write(" ")
+                        self._tty_out.write(3 * " ")
+                    self._tty_out.write(" ")
                 if menu_index == self._view.selected_index:
                     apply_style(self._menu_highlight_style)
                 if self._search and self._search.search_text != "":
                     match_obj = self._search.matches[displayed_index][1]
-                    sys.stdout.write(
+                    self._tty_out.write(
                         menu_entry[
                             : min(match_obj.start(), num_cols - wcswidth(self._menu_cursor) - shortcut_string_len)
                         ]
                     )
                     apply_style(self._search_highlight_style)
-                    sys.stdout.write(
+                    self._tty_out.write(
                         menu_entry[
                             match_obj.start() : min(
                                 match_obj.end(), num_cols - wcswidth(self._menu_cursor) - shortcut_string_len
@@ -701,56 +712,58 @@ class TerminalMenu:
                     apply_style()
                     if menu_index == self._view.selected_index:
                         apply_style(self._menu_highlight_style)
-                    sys.stdout.write(
+                    self._tty_out.write(
                         menu_entry[match_obj.end() : num_cols - wcswidth(self._menu_cursor) - shortcut_string_len]
                     )
                 else:
-                    sys.stdout.write(menu_entry[: num_cols - wcswidth(self._menu_cursor) - shortcut_string_len])
+                    self._tty_out.write(menu_entry[: num_cols - wcswidth(self._menu_cursor) - shortcut_string_len])
                 if menu_index == self._view.selected_index:
                     apply_style()
-                sys.stdout.write(
+                self._tty_out.write(
                     (num_cols - wcswidth(menu_entry) - wcswidth(self._menu_cursor) - shortcut_string_len) * " "
                 )
                 if displayed_index < self._viewport.upper_index:
-                    sys.stdout.write("\n")
+                    self._tty_out.write("\n")
             empty_menu_lines = self._viewport.upper_index - displayed_index
-            sys.stdout.write(
+            self._tty_out.write(
                 max(0, empty_menu_lines - 1) * (num_cols * " " + "\n") + min(1, empty_menu_lines) * (num_cols * " ")
             )
-            sys.stdout.write("\r" + (self._viewport.size - 1) * self._codename_to_terminal_code["cursor_up"])
+            self._tty_out.write("\r" + (self._viewport.size - 1) * self._codename_to_terminal_code["cursor_up"])
             displayed_menu_height += self._viewport.size - 1  # sum all written lines
             return displayed_menu_height
 
         def print_search_line() -> int:
             # pylint: disable=unsubscriptable-object
+            assert self._tty_out is not None
             displayed_menu_height = 0
             num_cols = self._num_cols()
             if self._search or self._show_search_hint:
-                sys.stdout.write(self._viewport.size * self._codename_to_terminal_code["cursor_down"])
+                self._tty_out.write(self._viewport.size * self._codename_to_terminal_code["cursor_down"])
             if self._search:
                 assert self._search.search_text is not None
-                sys.stdout.write(
+                self._tty_out.write(
                     (
                         (self._search_key if self._search_key is not None else DEFAULT_SEARCH_KEY)
                         + self._search.search_text
                     )[:num_cols]
                 )
-                sys.stdout.write((num_cols - len(self._search) - 1) * " ")
+                self._tty_out.write((num_cols - len(self._search) - 1) * " ")
             elif self._show_search_hint:
                 if self._search_key is not None:
                     search_hint = '(Press "{}" to search)'.format(self._search_key)[:num_cols]
                 else:
                     search_hint = "(Press any letter key to search)"[:num_cols]
-                sys.stdout.write(search_hint)
-                sys.stdout.write((num_cols - wcswidth(search_hint)) * " ")
+                self._tty_out.write(search_hint)
+                self._tty_out.write((num_cols - wcswidth(search_hint)) * " ")
             if self._search or self._show_search_hint:
-                sys.stdout.write("\r" + self._viewport.size * self._codename_to_terminal_code["cursor_up"])
+                self._tty_out.write("\r" + self._viewport.size * self._codename_to_terminal_code["cursor_up"])
                 displayed_menu_height = 1
             return displayed_menu_height
 
         def print_preview(preview_max_num_lines: int) -> int:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
+            assert self._tty_out is not None
             if self._preview_command is None or preview_max_num_lines < 3:
                 return 0
 
@@ -837,12 +850,12 @@ class TerminalMenu:
                     preview_string = strip_ansi_codes_except_styling(preview_string)
             except PreviewCommandFailedError as e:
                 preview_string = "The preview command failed with error message:\n\n" + str(e)
-            sys.stdout.write(
+            self._tty_out.write(
                 (self._viewport.size + self._search.occupied_lines_count - 1)
                 * self._codename_to_terminal_code["cursor_down"]
             )
             if preview_string is not None:
-                sys.stdout.write(
+                self._tty_out.write(
                     self._codename_to_terminal_code["cursor_down"]
                     + "\r"
                     + (
@@ -862,7 +875,7 @@ class TerminalMenu:
                         preview_num_lines = preview_max_num_lines
                         break
                     limited_line, limited_line_len = limit_string_with_escape_codes(line, num_cols - 3)
-                    sys.stdout.write(
+                    self._tty_out.write(
                         (
                             BoxDrawingCharacters.vertical
                             + (
@@ -877,7 +890,7 @@ class TerminalMenu:
                     )
                 else:
                     preview_num_lines = i + 3
-                sys.stdout.write(
+                self._tty_out.write(
                     (
                         BoxDrawingCharacters.lower_left
                         + (num_cols - 2) * BoxDrawingCharacters.horizontal
@@ -887,7 +900,7 @@ class TerminalMenu:
                 )
             else:
                 preview_num_lines = 0
-            sys.stdout.write(
+            self._tty_out.write(
                 (self._viewport.size + self._search.occupied_lines_count + preview_num_lines - 1)
                 * self._codename_to_terminal_code["cursor_up"]
             )
@@ -896,46 +909,49 @@ class TerminalMenu:
         def delete_old_menu_lines() -> None:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
+            assert self._tty_out is not None
             if (
                 self._previous_displayed_menu_height is not None
                 and self._previous_displayed_menu_height > displayed_menu_height
             ):
-                sys.stdout.write((displayed_menu_height + 1) * self._codename_to_terminal_code["cursor_down"])
-                sys.stdout.write(
+                self._tty_out.write((displayed_menu_height + 1) * self._codename_to_terminal_code["cursor_down"])
+                self._tty_out.write(
                     (self._previous_displayed_menu_height - displayed_menu_height)
                     * self._codename_to_terminal_code["delete_line"]
                 )
-                sys.stdout.write((displayed_menu_height + 1) * self._codename_to_terminal_code["cursor_up"])
+                self._tty_out.write((displayed_menu_height + 1) * self._codename_to_terminal_code["cursor_up"])
 
         def position_cursor() -> None:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
+            assert self._tty_out is not None
             if self._view.selected_displayed_index is None:
                 return
             # delete the first column
-            sys.stdout.write(
+            self._tty_out.write(
                 (self._viewport.size - 1)
                 * (wcswidth(self._menu_cursor) * " " + "\r" + self._codename_to_terminal_code["cursor_down"])
                 + wcswidth(self._menu_cursor) * " "
                 + "\r"
             )
-            sys.stdout.write((self._viewport.size - 1) * self._codename_to_terminal_code["cursor_up"])
+            self._tty_out.write((self._viewport.size - 1) * self._codename_to_terminal_code["cursor_up"])
             # position cursor and print menu selection character
-            sys.stdout.write(
+            self._tty_out.write(
                 (self._view.selected_displayed_index - self._viewport.lower_index)
                 * self._codename_to_terminal_code["cursor_down"]
             )
             apply_style(self._menu_cursor_style)
-            sys.stdout.write(self._menu_cursor)
+            self._tty_out.write(self._menu_cursor)
             apply_style()
-            sys.stdout.write("\r")
-            sys.stdout.write(
+            self._tty_out.write("\r")
+            self._tty_out.write(
                 (self._view.selected_displayed_index - self._viewport.lower_index)
                 * self._codename_to_terminal_code["cursor_up"]
             )
 
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
+        assert self._tty_out is not None
         displayed_menu_height = 0  # sum all written lines
         if self._preview_command is not None:
             self._viewport.preview_lines_count = int(self._preview_size * self._num_lines())
@@ -948,27 +964,29 @@ class TerminalMenu:
         delete_old_menu_lines()
         position_cursor()
         self._previous_displayed_menu_height = displayed_menu_height
-        sys.stdout.flush()
+        self._tty_out.flush()
 
     def _clear_menu(self) -> None:
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
         assert self._previous_displayed_menu_height is not None
+        assert self._tty_out is not None
         if self._title_lines:
-            sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_up"])
-            sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["delete_line"])
-        sys.stdout.write((self._previous_displayed_menu_height + 1) * self._codename_to_terminal_code["delete_line"])
-        sys.stdout.flush()
+            self._tty_out.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_up"])
+            self._tty_out.write(len(self._title_lines) * self._codename_to_terminal_code["delete_line"])
+        self._tty_out.write((self._previous_displayed_menu_height + 1) * self._codename_to_terminal_code["delete_line"])
+        self._tty_out.flush()
 
     def _read_next_key(self, ignore_case: bool = True) -> str:
         # pylint: disable=unsubscriptable-object,unsupported-membership-test
         assert self._terminal_code_to_codename is not None
+        assert self._tty_in is not None
         # Needed for asynchronous handling of terminal resize events
         self._reading_next_key = True
         if self._paint_before_next_read:
             self._paint_menu()
             self._paint_before_next_read = False
-        code = os.read(self._fd, 80).decode("ascii")  # blocks until any amount of bytes is available
+        code = os.read(self._tty_in.fileno(), 80).decode("ascii")  # blocks until any amount of bytes is available
         self._reading_next_key = False
         if code in self._terminal_code_to_codename:
             return self._terminal_code_to_codename[code]
@@ -1000,9 +1018,10 @@ class TerminalMenu:
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
         self._init_term()
+        assert self._tty_out is not None
         if self._title_lines:
             # `print_menu` expects the cursor on the first menu item -> reserve one line for the title
-            sys.stdout.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_down"])
+            self._tty_out.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_down"])
         menu_was_interrupted = False
         try:
             init_signal_handling()
