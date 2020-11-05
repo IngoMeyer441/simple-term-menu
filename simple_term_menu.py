@@ -32,8 +32,8 @@ from typing import (
 
 try:
     import termios
-except ImportError:
-    raise NotImplementedError('"{}" is currently not supported.'.format(platform.system()))
+except ImportError as e:
+    raise NotImplementedError('"{}" is currently not supported.'.format(platform.system())) from e
 
 
 __author__ = "Ingo Meyer"
