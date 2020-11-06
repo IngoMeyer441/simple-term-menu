@@ -40,7 +40,7 @@ __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2019 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (0, 10, 3)
+__version_info__ = (0, 10, 4)
 __version__ = ".".join(map(str, __version_info__))
 
 
