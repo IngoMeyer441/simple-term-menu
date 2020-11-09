@@ -316,6 +316,8 @@ Furthermore, the `TerminalMenu` constructor takes these additional parameters to
   to `True`.
 - `clear_screen`: A bool value which indicates if the screen will be cleared before the menu is shown. Defaults to
   `False`.
+- `clear_menu_on_exit`: A bool value which indicates if the menu will be cleared after the `show` method. Defaults to
+  `True`.
 - `cursor_index`: The initially selected item index.
 
 ### Command line program
@@ -329,9 +331,10 @@ usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
                         [-m HIGHLIGHT_STYLE] [-n SEARCH_HIGHLIGHT_STYLE]
                         [-o SHORTCUT_KEY_HIGHLIGHT_STYLE]
                         [-q SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE] [-C]
-                        [-i CURSOR_INDEX] [-l] [-p PREVIEW_COMMAND]
-                        [--preview-size PREVIEW_SIZE] [-k SEARCH_KEY] [-a] [-E]
-                        [-u] [-v] [-V] [entries [entries ...]]
+                        [-i CURSOR_INDEX] [-l] [-X] [-p PREVIEW_COMMAND]
+                        [--preview-size PREVIEW_SIZE] [-k SEARCH_KEY] [-a]
+                        [-E] [-u] [-v] [-V]
+                        [entries [entries ...]]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
 
@@ -362,6 +365,8 @@ optional arguments:
   -i CURSOR_INDEX, --cursor-index CURSOR_INDEX
                         initially selected item index
   -l, --clear-screen    clear the screen before the menu is shown
+  -X, --no-clear-menu-on-exit
+                        do not clear the menu on exit
   -p PREVIEW_COMMAND, --preview PREVIEW_COMMAND
                         Command to generate a preview for the selected menu
                         entry. "{}" can be used as placeholder for the menu
