@@ -316,6 +316,7 @@ Furthermore, the `TerminalMenu` constructor takes these additional parameters to
   to `True`.
 - `clear_screen`: A bool value which indicates if the screen will be cleared before the menu is shown. Defaults to
   `False`.
+- `cursor_index`: The initially selected item index.
 
 ### Command line program
 
