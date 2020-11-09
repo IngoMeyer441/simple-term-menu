@@ -327,10 +327,10 @@ supported:
 usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
                         [-m HIGHLIGHT_STYLE] [-n SEARCH_HIGHLIGHT_STYLE]
                         [-o SHORTCUT_KEY_HIGHLIGHT_STYLE]
-                        [-q SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE] [-C] [-l]
-                        [-p PREVIEW_COMMAND] [--preview-size PREVIEW_SIZE]
-                        [-k SEARCH_KEY] [-a] [-E] [-u] [-v] [-V]
-                        [entries [entries ...]]
+                        [-q SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE] [-C]
+                        [-i CURSOR_INDEX] [-l] [-p PREVIEW_COMMAND]
+                        [--preview-size PREVIEW_SIZE] [-k SEARCH_KEY] [-a] [-E]
+                        [-u] [-v] [-V] [entries [entries ...]]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
 
@@ -358,6 +358,8 @@ optional arguments:
                         style of parentheses enclosing shortcut keys (default:
                         fg_gray)
   -C, --no-cycle        do not cycle the menu selection
+  -i CURSOR_INDEX, --cursor-index CURSOR_INDEX
+                        initially selected item index
   -l, --clear-screen    clear the screen before the menu is shown
   -p PREVIEW_COMMAND, --preview PREVIEW_COMMAND
                         Command to generate a preview for the selected menu

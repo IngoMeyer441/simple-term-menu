@@ -418,6 +418,7 @@ class TerminalMenu:
         accept_keys: Iterable[str] = DEFAULT_ACCEPT_KEYS,
         show_search_hint: bool = DEFAULT_SHOW_SEARCH_HINT,
         show_shortcut_hints: bool = DEFAULT_SHOW_SHORTCUT_HINTS,
+        cursor_index: Optional[int] = None,
     ):
         def extract_shortcuts_menu_entries_and_preview_arguments(
             entries: Iterable[str],
@@ -496,10 +497,12 @@ class TerminalMenu:
         self._chosen_accept_key = None  # type: Optional[str]
         self._chosen_menu_index = None  # type: Optional[int]
         self._search = self.Search(
-            self._menu_entries, case_senitive=self._search_case_sensitive, show_search_hint=self._show_search_hint
+            self._menu_entries, case_senitive=self._search_case_sensitive, show_search_hint=self._show_search_hint,
         )
         self._viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), 0, 0)
         self._view = self.View(self._menu_entries, self._search, self._viewport, self._cycle_cursor)
+        if cursor_index and 0 < cursor_index < len(self._menu_entries):
+            self._view.selected_index = cursor_index
         self._search.change_callback = self._view.update_view
         self._previous_displayed_menu_height = None  # type: Optional[int]
         self._reading_next_key = False
@@ -1161,6 +1164,7 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help="style of parentheses enclosing shortcut keys (default: %(default)s)",
     )
     parser.add_argument("-C", "--no-cycle", action="store_false", dest="cycle", help="do not cycle the menu selection")
+    parser.add_argument("-i", "--cursor-index", action="store", type=int, default=0, help="initially selected item index")
     parser.add_argument(
         "-l",
         "--clear-screen",
@@ -1289,6 +1293,7 @@ def main() -> None:
             exit_on_shortcut=args.exit_on_shortcut,
             show_search_hint=args.show_search_hint,
             show_shortcut_hints=args.show_shortcut_hints,
+            cursor_index=args.cursor_index,
         )
     except InvalidStyleError as e:
         print(str(e), file=sys.stderr)
