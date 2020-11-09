@@ -497,7 +497,9 @@ class TerminalMenu:
         self._chosen_accept_key = None  # type: Optional[str]
         self._chosen_menu_index = None  # type: Optional[int]
         self._search = self.Search(
-            self._menu_entries, case_senitive=self._search_case_sensitive, show_search_hint=self._show_search_hint,
+            self._menu_entries,
+            case_senitive=self._search_case_sensitive,
+            show_search_hint=self._show_search_hint,
         )
         self._viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), 0, 0)
         self._view = self.View(self._menu_entries, self._search, self._viewport, self._cycle_cursor)
@@ -1164,7 +1166,9 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help="style of parentheses enclosing shortcut keys (default: %(default)s)",
     )
     parser.add_argument("-C", "--no-cycle", action="store_false", dest="cycle", help="do not cycle the menu selection")
-    parser.add_argument("-i", "--cursor-index", action="store", type=int, default=0, help="initially selected item index")
+    parser.add_argument(
+        "-i", "--cursor-index", action="store", type=int, default=0, help="initially selected item index"
+    )
     parser.add_argument(
         "-l",
         "--clear-screen",
