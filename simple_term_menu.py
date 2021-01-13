@@ -38,9 +38,9 @@ except ImportError as e:
 
 __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
-__copyright__ = "Copyright © 2019 Forschungszentrum Jülich GmbH. All rights reserved."
+__copyright__ = "Copyright © 2021 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (0, 10, 4)
+__version_info__ = (0, 10, 5)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -59,6 +59,7 @@ DEFAULT_EXIT_ON_SHORTCUT = True
 DEFAULT_ACCEPT_KEYS = ("enter",)
 DEFAULT_SHOW_SEARCH_HINT = False
 DEFAULT_SHOW_SHORTCUT_HINTS = False
+DEFAULT_CLEAR_MENU_ON_EXIT = True
 MIN_VISIBLE_MENU_ENTRIES_COUNT = 3
 
 
@@ -418,6 +419,8 @@ class TerminalMenu:
         accept_keys: Iterable[str] = DEFAULT_ACCEPT_KEYS,
         show_search_hint: bool = DEFAULT_SHOW_SEARCH_HINT,
         show_shortcut_hints: bool = DEFAULT_SHOW_SHORTCUT_HINTS,
+        cursor_index: Optional[int] = None,
+        clear_menu_on_exit: bool = DEFAULT_CLEAR_MENU_ON_EXIT,
     ):
         def extract_shortcuts_menu_entries_and_preview_arguments(
             entries: Iterable[str],
@@ -493,13 +496,18 @@ class TerminalMenu:
         self._accept_keys = tuple(accept_keys)
         self._show_search_hint = show_search_hint
         self._show_shortcut_hints = show_shortcut_hints
+        self._clear_menu_on_exit = clear_menu_on_exit
         self._chosen_accept_key = None  # type: Optional[str]
         self._chosen_menu_index = None  # type: Optional[int]
         self._search = self.Search(
-            self._menu_entries, case_senitive=self._search_case_sensitive, show_search_hint=self._show_search_hint
+            self._menu_entries,
+            case_senitive=self._search_case_sensitive,
+            show_search_hint=self._show_search_hint,
         )
         self._viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), 0, 0)
         self._view = self.View(self._menu_entries, self._search, self._viewport, self._cycle_cursor)
+        if cursor_index and 0 < cursor_index < len(self._menu_entries):
+            self._view.selected_index = cursor_index
         self._search.change_callback = self._view.update_view
         self._previous_displayed_menu_height = None  # type: Optional[int]
         self._reading_next_key = False
@@ -971,10 +979,17 @@ class TerminalMenu:
         assert self._codename_to_terminal_code is not None
         assert self._previous_displayed_menu_height is not None
         assert self._tty_out is not None
-        if self._title_lines:
-            self._tty_out.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_up"])
-            self._tty_out.write(len(self._title_lines) * self._codename_to_terminal_code["delete_line"])
-        self._tty_out.write((self._previous_displayed_menu_height + 1) * self._codename_to_terminal_code["delete_line"])
+        if self._clear_menu_on_exit:
+            if self._title_lines:
+                self._tty_out.write(len(self._title_lines) * self._codename_to_terminal_code["cursor_up"])
+                self._tty_out.write(len(self._title_lines) * self._codename_to_terminal_code["delete_line"])
+            self._tty_out.write(
+                (self._previous_displayed_menu_height + 1) * self._codename_to_terminal_code["delete_line"]
+            )
+        else:
+            self._tty_out.write(
+                (self._previous_displayed_menu_height + 1) * self._codename_to_terminal_code["cursor_down"]
+            )
         self._tty_out.flush()
 
     def _read_next_key(self, ignore_case: bool = True) -> str:
@@ -1162,11 +1177,21 @@ def get_argumentparser() -> argparse.ArgumentParser:
     )
     parser.add_argument("-C", "--no-cycle", action="store_false", dest="cycle", help="do not cycle the menu selection")
     parser.add_argument(
+        "-i", "--cursor-index", action="store", type=int, default=0, help="initially selected item index"
+    )
+    parser.add_argument(
         "-l",
         "--clear-screen",
         action="store_true",
         dest="clear_screen",
         help="clear the screen before the menu is shown",
+    )
+    parser.add_argument(
+        "-X",
+        "--no-clear-menu-on-exit",
+        action="store_false",
+        dest="clear_menu_on_exit",
+        help="do not clear the menu on exit",
     )
     parser.add_argument(
         "-p",
@@ -1289,6 +1314,8 @@ def main() -> None:
             exit_on_shortcut=args.exit_on_shortcut,
             show_search_hint=args.show_search_hint,
             show_shortcut_hints=args.show_shortcut_hints,
+            cursor_index=args.cursor_index,
+            clear_menu_on_exit=args.clear_menu_on_exit,
         )
     except InvalidStyleError as e:
         print(str(e), file=sys.stderr)
