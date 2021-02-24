@@ -3,6 +3,8 @@
 import argparse
 import copy
 import ctypes
+import io
+import locale
 import os
 import platform
 import re
@@ -75,13 +77,25 @@ class PreviewCommandFailedError(Exception):
     pass
 
 
+def get_locale() -> str:
+    user_locale = locale.getlocale()[1]
+    if user_locale is None:
+        return "ascii"
+    else:
+        return user_locale.lower()
+
+
 def wcswidth(text: str) -> int:
     if not hasattr(wcswidth, "libc"):
         if platform.system() == "Darwin":
             wcswidth.libc = ctypes.cdll.LoadLibrary("libSystem.dylib")
         else:
             wcswidth.libc = ctypes.cdll.LoadLibrary("libc.so.6")
-    return wcswidth.libc.wcswidth(ctypes.c_wchar_p(text), len(text.encode()))
+    user_locale = get_locale()
+    # First replace any null characters with the unicode replacement character (U+FFFD) since they cannot be passed
+    # in a `c_wchar_p`
+    encoded_text = text.replace("\0", "\uFFFD").encode(encoding=user_locale, errors="replace")
+    return wcswidth.libc.wcswidth(ctypes.c_wchar_p(encoded_text.decode(encoding=user_locale)), len(encoded_text))
 
 
 def static_variables(**variables: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
@@ -512,6 +526,7 @@ class TerminalMenu:
         self._previous_displayed_menu_height = None  # type: Optional[int]
         self._reading_next_key = False
         self._paint_before_next_read = False
+        self._user_locale = get_locale()
         self._tty_in = None  # type: Optional[TextIO]
         self._tty_out = None  # type: Optional[TextIO]
         self._old_term = None  # type: Optional[List[Union[int, List[bytes]]]]
@@ -627,8 +642,8 @@ class TerminalMenu:
     def _init_term(self) -> None:
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
-        self._tty_in = open("/dev/tty", "r")
-        self._tty_out = open("/dev/tty", "w")
+        self._tty_in = open("/dev/tty", "r", encoding=self._user_locale)
+        self._tty_out = open("/dev/tty", "w", encoding=self._user_locale, errors="replace")
         self._old_term = termios.tcgetattr(self._tty_in.fileno())
         self._new_term = termios.tcgetattr(self._tty_in.fileno())
         # set the terminal to: unbuffered, no echo and no <CR> to <NL> translation (so <enter> sends <CR> instead of
@@ -788,13 +803,21 @@ class TerminalMenu:
                     return None
                 if isinstance(self._preview_command, str):
                     try:
-                        preview_string = subprocess.check_output(
+                        preview_process = subprocess.Popen(
                             [cmd_part.format(preview_argument) for cmd_part in shlex.split(self._preview_command)],
+                            stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE,
-                            universal_newlines=True,
-                        ).strip()
+                        )
+                        assert preview_process.stdout is not None
+                        preview_string = (
+                            io.TextIOWrapper(preview_process.stdout, encoding=self._user_locale, errors="replace")
+                            .read()
+                            .strip()
+                        )
                     except subprocess.CalledProcessError as e:
-                        raise PreviewCommandFailedError(e.stderr.strip())
+                        raise PreviewCommandFailedError(
+                            e.stderr.decode(encoding=self._user_locale, errors="replace").strip()
+                        )
                 else:
                     preview_string = self._preview_command(preview_argument)
                 return preview_string
@@ -1001,7 +1024,8 @@ class TerminalMenu:
         if self._paint_before_next_read:
             self._paint_menu()
             self._paint_before_next_read = False
-        code = os.read(self._tty_in.fileno(), 80).decode("ascii")  # blocks until any amount of bytes is available
+        # blocks until any amount of bytes is available
+        code = os.read(self._tty_in.fileno(), 80).decode("ascii", errors="ignore")
         self._reading_next_key = False
         if code in self._terminal_code_to_codename:
             return self._terminal_code_to_codename[code]
