@@ -58,7 +58,9 @@ cancel the menu with escape, `q` or `<Ctrl>-C`. `show` returns the selected menu
 canceled.
 
 You can pass an optional `title` to the `TerminalMenu` constructor which will be placed above the menu. `title` can be a
-simple string, a multiline string (with `\n` newlines) or a list of strings.
+simple string, a multiline string (with `\n` newlines) or a list of strings. The same applies to the `status_bar`
+parameter, which places a status bar below the menu. Moreover, you can use a callable as `status_bar` parameter which
+takes the currently selected entry and returns a status bar string.
 
 ### Styling
 
@@ -100,6 +102,8 @@ You can alter the following styles:
 - `shortcut_parentheses_highlight_style`: The style of parentheses enclosing shortcut keys. The default style is
   `("fg_gray",)`.
 
+- `status_bar_style`: The style of the status bar below the menu. The default style is `("fg_yellow", "bg_black")`.
+
 By setting `menu_cursor` you can define another cursor or disable it (`None`). The default cursor is `"> "`.
 
 ### Searching
@@ -132,8 +136,9 @@ shortcut target, pass `exit_on_shortcut=False` to the `TerminalMenu` constructor
 
 If you configured the search to be activated on every letter key, the shortcut feature will be disabled.
 
-Pass `show_shortcut_hints=True` to the `TerminalMenu` constructor to display shortcut hints in the menu title (useful
-for very long menus which need scrolling).
+Pass `show_shortcut_hints=True` to the `TerminalMenu` constructor to display shortcut hints in the status bar (useful
+for very long menus which need scrolling). Additionally pass `show_shortcut_hints_in_status_bar=False` if you prefer
+shortcut hints in the menu title.
 
 #### Shortcuts example
 
@@ -333,8 +338,9 @@ usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
                         [-q SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE] [-C]
                         [-i CURSOR_INDEX] [-l] [-X] [-p PREVIEW_COMMAND]
                         [--preview-size PREVIEW_SIZE] [-k SEARCH_KEY] [-a]
-                        [-E] [-u] [-v] [-V]
-                        [entries [entries ...]]
+                        [-E] [-u] [-v] [-b STATUS_BAR] [-r STATUS_BAR_STYLE]
+                        [-S] [-V]
+                        [entries ...]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
 
@@ -385,6 +391,13 @@ optional arguments:
   -u, --show-search_hint
                         show a search hint in the search line
   -v, --show-shortcut_hints
+                        show shortcut hints in the status bar
+  -b STATUS_BAR, --status_bar STATUS_BAR
+                        status bar text
+  -r STATUS_BAR_STYLE, --status_bar_style STATUS_BAR_STYLE
+                        style of the status bar lines (default:
+                        fg_yellow,bg_black)
+  -S, --show-shortcut_hints_in_title
                         show shortcut hints in the menu title
   -V, --version         print the version number and exit
 ```

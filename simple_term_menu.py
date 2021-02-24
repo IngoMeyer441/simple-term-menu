@@ -62,6 +62,8 @@ DEFAULT_ACCEPT_KEYS = ("enter",)
 DEFAULT_SHOW_SEARCH_HINT = False
 DEFAULT_SHOW_SHORTCUT_HINTS = False
 DEFAULT_CLEAR_MENU_ON_EXIT = True
+DEFAULT_STATUS_BAR_STYLE = ("fg_yellow", "bg_black")
+DEFAULT_SHOW_SHORTCUT_HINTS_IN_STATUS_BAR = True
 MIN_VISIBLE_MENU_ENTRIES_COUNT = 3
 
 
@@ -276,11 +278,13 @@ class TerminalMenu:
             self,
             num_menu_entries: int,
             title_lines_count: int,
+            status_bar_lines_count: int,
             preview_lines_count: int,
             search_lines_count: int,
         ):
             self._num_menu_entries = num_menu_entries
             self._title_lines_count = title_lines_count
+            self._status_bar_lines_count = status_bar_lines_count
             # Use the property setter since it has some more logic
             self.preview_lines_count = preview_lines_count
             self.search_lines_count = search_lines_count
@@ -292,6 +296,7 @@ class TerminalMenu:
             return (
                 TerminalMenu._num_lines()
                 - self._title_lines_count
+                - self._status_bar_lines_count
                 - self._preview_lines_count
                 - self._search_lines_count
             )
@@ -346,6 +351,14 @@ class TerminalMenu:
             return self._title_lines_count
 
         @property
+        def status_bar_lines_count(self) -> int:
+            return self._status_bar_lines_count
+
+        @status_bar_lines_count.setter
+        def status_bar_lines_count(self, value: int) -> None:
+            self._status_bar_lines_count = value
+
+        @property
         def preview_lines_count(self) -> int:
             return self._preview_lines_count
 
@@ -353,7 +366,10 @@ class TerminalMenu:
         def preview_lines_count(self, value: int) -> None:
             self._preview_lines_count = min(
                 value if value >= 3 else 0,
-                TerminalMenu._num_lines() - self._title_lines_count - MIN_VISIBLE_MENU_ENTRIES_COUNT,
+                TerminalMenu._num_lines()
+                - self._title_lines_count
+                - self._status_bar_lines_count
+                - MIN_VISIBLE_MENU_ENTRIES_COUNT,
             )
 
         @property
@@ -435,6 +451,9 @@ class TerminalMenu:
         show_shortcut_hints: bool = DEFAULT_SHOW_SHORTCUT_HINTS,
         cursor_index: Optional[int] = None,
         clear_menu_on_exit: bool = DEFAULT_CLEAR_MENU_ON_EXIT,
+        status_bar: Optional[Union[str, Iterable[str], Callable[[str], str]]] = None,
+        status_bar_style: Optional[Iterable[str]] = DEFAULT_STATUS_BAR_STYLE,
+        show_shortcut_hints_in_status_bar: bool = DEFAULT_SHOW_SHORTCUT_HINTS_IN_STATUS_BAR,
     ):
         def extract_shortcuts_menu_entries_and_preview_arguments(
             entries: Iterable[str],
@@ -457,31 +476,26 @@ class TerminalMenu:
                 preview_arguments.append(preview_argument)
             return menu_entries, shortcut_keys, preview_arguments
 
-        def setup_title_lines(
-            title: Optional[Union[str, Iterable[str]]],
+        def setup_title_or_status_bar_lines(
+            title_or_status_bar: Optional[Union[str, Iterable[str]]],
             show_shortcut_hints: bool,
             menu_entries: Iterable[str],
             shortcut_keys: Iterable[str],
+            shortcut_hints_in_parentheses: bool,
         ) -> Tuple[str, ...]:
-            if title is None:
-                title_lines = []  # type: List[str]
-            elif isinstance(title, str):
-                title_lines = title.split("\n")
+            if title_or_status_bar is None:
+                lines = []  # type: List[str]
+            elif isinstance(title_or_status_bar, str):
+                lines = title_or_status_bar.split("\n")
             else:
-                title_lines = list(title)
+                lines = list(title_or_status_bar)
             if show_shortcut_hints:
-                shortcut_hints_line = (
-                    "("
-                    + ", ".join(
-                        "[{}]: {}".format(shortcut_key, menu_entry)
-                        for shortcut_key, menu_entry in zip(shortcut_keys, menu_entries)
-                        if shortcut_key is not None
-                    )
-                    + ")"
+                shortcut_hints_line = self._get_shortcut_hints_line(
+                    menu_entries, shortcut_keys, shortcut_hints_in_parentheses
                 )
-                if shortcut_hints_line != "()":
-                    title_lines.append(shortcut_hints_line)
-            return tuple(title_lines)
+                if shortcut_hints_line is not None:
+                    lines.append(shortcut_hints_line)
+            return tuple(lines)
 
         (
             self._menu_entries,
@@ -489,10 +503,16 @@ class TerminalMenu:
             self._preview_arguments,
         ) = extract_shortcuts_menu_entries_and_preview_arguments(menu_entries)
         self._shortcuts_defined = any(key is not None for key in self._shortcut_keys)
-        self._title_lines = setup_title_lines(title, show_shortcut_hints, self._menu_entries, self._shortcut_keys)
+        self._title_lines = setup_title_or_status_bar_lines(
+            title,
+            show_shortcut_hints and not show_shortcut_hints_in_status_bar,
+            self._menu_entries,
+            self._shortcut_keys,
+            True,
+        )
+        self._status_bar_style = tuple(status_bar_style) if status_bar_style is not None else ()
         self._menu_cursor = menu_cursor if menu_cursor is not None else ""
         self._menu_cursor_style = tuple(menu_cursor_style) if menu_cursor_style is not None else ()
-        self._menu_highlight_style = tuple(menu_highlight_style) if menu_highlight_style is not None else ()
         self._cycle_cursor = cycle_cursor
         self._clear_screen = clear_screen
         self._preview_command = preview_command
@@ -510,7 +530,21 @@ class TerminalMenu:
         self._accept_keys = tuple(accept_keys)
         self._show_search_hint = show_search_hint
         self._show_shortcut_hints = show_shortcut_hints
+        self._show_shortcut_hints_in_status_bar = show_shortcut_hints_in_status_bar
         self._clear_menu_on_exit = clear_menu_on_exit
+        self._status_bar_func = None  # type: Optional[Callable[[str], str]]
+        self._status_bar_lines = None  # type: Optional[Tuple[str, ...]]
+        if callable(status_bar):
+            self._status_bar_func = status_bar
+        else:
+            self._status_bar_lines = setup_title_or_status_bar_lines(
+                status_bar,
+                show_shortcut_hints and show_shortcut_hints_in_status_bar,
+                self._menu_entries,
+                self._shortcut_keys,
+                False,
+            )
+        self._menu_highlight_style = tuple(menu_highlight_style) if menu_highlight_style is not None else ()
         self._chosen_accept_key = None  # type: Optional[str]
         self._chosen_menu_index = None  # type: Optional[int]
         self._search = self.Search(
@@ -518,7 +552,13 @@ class TerminalMenu:
             case_senitive=self._search_case_sensitive,
             show_search_hint=self._show_search_hint,
         )
-        self._viewport = self.Viewport(len(self._menu_entries), len(self._title_lines), 0, 0)
+        self._viewport = self.Viewport(
+            len(self._menu_entries),
+            len(self._title_lines),
+            len(self._status_bar_lines) if self._status_bar_lines is not None else 0,
+            0,
+            0,
+        )
         self._view = self.View(self._menu_entries, self._search, self._viewport, self._cycle_cursor)
         if cursor_index and 0 < cursor_index < len(self._menu_entries):
             self._view.selected_index = cursor_index
@@ -536,6 +576,24 @@ class TerminalMenu:
         self._init_backspace_control_character()
         self._add_missing_control_characters_for_keys(self._accept_keys)
         self._init_terminal_codes()
+
+    @staticmethod
+    def _get_shortcut_hints_line(
+        menu_entries: Iterable[str],
+        shortcut_keys: Iterable[str],
+        shortcut_hints_in_parentheses: bool,
+    ) -> Optional[str]:
+        shortcut_hints_line = ", ".join(
+            "[{}]: {}".format(shortcut_key, menu_entry)
+            for shortcut_key, menu_entry in zip(shortcut_keys, menu_entries)
+            if shortcut_key is not None
+        )
+        if shortcut_hints_line != "":
+            if shortcut_hints_in_parentheses:
+                return "(" + shortcut_hints_line + ")"
+            else:
+                return shortcut_hints_line
+        return None
 
     @staticmethod
     def _get_keycode_for_key(key: str) -> str:
@@ -629,6 +687,7 @@ class TerminalMenu:
             self._search_highlight_style,
             self._shortcut_key_highlight_style,
             self._shortcut_parentheses_highlight_style,
+            self._status_bar_style,
         ):
             for style in style_tuple:
                 if style not in self._codename_to_capname:
@@ -672,6 +731,21 @@ class TerminalMenu:
         self._tty_out.close()
 
     def _paint_menu(self) -> None:
+        def get_status_bar_lines() -> Tuple[str, ...]:
+            if self._status_bar_func is not None and self._view.selected_index is not None:
+                status_bar_lines = tuple(
+                    self._status_bar_func(self._menu_entries[self._view.selected_index]).strip().split("\n")
+                )
+                if self._show_shortcut_hints and self._show_shortcut_hints_in_status_bar:
+                    shortcut_hints_line = self._get_shortcut_hints_line(self._menu_entries, self._shortcut_keys, False)
+                    if shortcut_hints_line is not None:
+                        status_bar_lines += (shortcut_hints_line,)
+            elif self._status_bar_lines is not None:
+                status_bar_lines = self._status_bar_lines
+            else:
+                status_bar_lines = tuple()
+            return status_bar_lines
+
         def apply_style(style_iterable: Optional[Iterable[str]] = None, reset: bool = True) -> None:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
@@ -783,6 +857,34 @@ class TerminalMenu:
                 displayed_menu_height = 1
             return displayed_menu_height
 
+        def print_status_bar() -> int:
+            # pylint: disable=unsubscriptable-object
+            assert self._codename_to_terminal_code is not None
+            assert self._tty_out is not None
+            displayed_menu_height = 0  # sum all written lines
+            num_cols = self._num_cols()
+            if status_bar_lines:
+                self._tty_out.write(
+                    (self._viewport.size + self._search.occupied_lines_count)
+                    * self._codename_to_terminal_code["cursor_down"]
+                )
+                apply_style(self._status_bar_style)
+                self._tty_out.write(
+                    "\r"
+                    + "\n".join(
+                        (status_bar_line[:num_cols] + (num_cols - wcswidth(status_bar_line)) * " ")
+                        for status_bar_line in status_bar_lines
+                    )
+                    + "\n"
+                )
+                apply_style()
+                self._tty_out.write(
+                    (self._viewport.size + self._search.occupied_lines_count + len(status_bar_lines))
+                    * self._codename_to_terminal_code["cursor_up"]
+                )
+                displayed_menu_height += len(status_bar_lines)
+            return displayed_menu_height
+
         def print_preview(preview_max_num_lines: int) -> int:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
@@ -882,7 +984,7 @@ class TerminalMenu:
             except PreviewCommandFailedError as e:
                 preview_string = "The preview command failed with error message:\n\n" + str(e)
             self._tty_out.write(
-                (self._viewport.size + self._search.occupied_lines_count - 1)
+                (self._viewport.size + len(status_bar_lines) + self._search.occupied_lines_count - 1)
                 * self._codename_to_terminal_code["cursor_down"]
             )
             if preview_string is not None:
@@ -932,7 +1034,13 @@ class TerminalMenu:
             else:
                 preview_num_lines = 0
             self._tty_out.write(
-                (self._viewport.size + self._search.occupied_lines_count + preview_num_lines - 1)
+                (
+                    self._viewport.size
+                    + len(status_bar_lines)
+                    + self._search.occupied_lines_count
+                    + preview_num_lines
+                    - 1
+                )
                 * self._codename_to_terminal_code["cursor_up"]
             )
             return preview_num_lines
@@ -984,12 +1092,15 @@ class TerminalMenu:
         assert self._codename_to_terminal_code is not None
         assert self._tty_out is not None
         displayed_menu_height = 0  # sum all written lines
+        status_bar_lines = get_status_bar_lines()
+        self._viewport.status_bar_lines_count = len(status_bar_lines)
         if self._preview_command is not None:
             self._viewport.preview_lines_count = int(self._preview_size * self._num_lines())
             preview_max_num_lines = self._viewport.preview_lines_count
         self._viewport.keep_visible(self._view.selected_displayed_index)
         displayed_menu_height += print_menu_entries()
         displayed_menu_height += print_search_line()
+        displayed_menu_height += print_status_bar()
         if self._preview_command is not None:
             displayed_menu_height += print_preview(preview_max_num_lines)
         delete_old_menu_lines()
@@ -1269,6 +1380,29 @@ def get_argumentparser() -> argparse.ArgumentParser:
         "--show-shortcut_hints",
         action="store_true",
         dest="show_shortcut_hints",
+        help="show shortcut hints in the status bar",
+    )
+    parser.add_argument(
+        "-b",
+        "--status_bar",
+        action="store",
+        dest="status_bar",
+        help="status bar text",
+    )
+    parser.add_argument(
+        "-r",
+        "--status_bar_style",
+        action="store",
+        dest="status_bar_style",
+        default=",".join(DEFAULT_STATUS_BAR_STYLE),
+        help="style of the status bar lines (default: %(default)s)",
+    )
+    parser.add_argument(
+        "-S",
+        "--show-shortcut_hints_in_title",
+        action="store_false",
+        dest="show_shortcut_hints_in_status_bar",
+        default=True,
         help="show shortcut hints in the menu title",
     )
     parser.add_argument(
@@ -1303,8 +1437,14 @@ def parse_arguments() -> AttributeDict:
         args.shortcut_parentheses_highlight_style = tuple(args.shortcut_parentheses_highlight_style.split(","))
     else:
         args.shortcut_parentheses_highlight_style = None
+    if args.status_bar_style != "":
+        args.status_bar_style = tuple(args.status_bar_style.split(","))
+    else:
+        args.status_bar_style = None
     if args.search_key.lower() == "none":
         args.search_key = None
+    if args.show_shortcut_hints_in_status_bar:
+        args.show_shortcut_hints = True
     return args
 
 
@@ -1340,6 +1480,9 @@ def main() -> None:
             show_shortcut_hints=args.show_shortcut_hints,
             cursor_index=args.cursor_index,
             clear_menu_on_exit=args.clear_menu_on_exit,
+            status_bar=args.status_bar,
+            status_bar_style=args.status_bar_style,
+            show_shortcut_hints_in_status_bar=args.show_shortcut_hints_in_status_bar,
         )
     except InvalidStyleError as e:
         print(str(e), file=sys.stderr)
