@@ -14,7 +14,6 @@ import sys
 from locale import getlocale
 from types import FrameType
 from typing import (
-    cast,
     Any,
     Callable,
     Dict,
@@ -28,6 +27,7 @@ from typing import (
     TextIO,
     Tuple,
     Union,
+    cast,
 )
 
 try:
