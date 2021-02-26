@@ -1,0 +1,23 @@
+# Universal EditorConfig config file, see https://editorconfig.org for the spec
+
+# top-most EditorConfig file
+root = true
+
+# General settings for all files:
+# - UTF-8 charset
+# - Unix-style newlines with a newline ending every file
+# - Indent with 4 spaces
+# - Set the maximum line length to 120 characters (not supported by all editors)
+# - Trim trailing whitespace
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+max_line_length = 120
+trim_trailing_whitespace = true
+
+# Tab indentation for Makefiles
+[Makefile]
+indent_style = tab
