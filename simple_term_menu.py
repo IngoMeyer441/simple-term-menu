@@ -1405,6 +1405,12 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help="show shortcut hints in the menu title",
     )
     parser.add_argument(
+        "--stdout",
+        action="store_true",
+        dest="stdout",
+        help="print the selected menu index to stdout (in addition to the exit status)",
+    )
+    parser.add_argument(
         "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
     )
     parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
@@ -1491,6 +1497,8 @@ def main() -> None:
     if chosen_entry is None:
         sys.exit(0)
     else:
+        if args.stdout:
+            print(chosen_entry + 1)
         sys.exit(chosen_entry + 1)
 
 

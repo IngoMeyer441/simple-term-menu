@@ -340,7 +340,7 @@ usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
                         [-i CURSOR_INDEX] [-l] [-X] [-p PREVIEW_COMMAND]
                         [--preview-size PREVIEW_SIZE] [-k SEARCH_KEY] [-a]
                         [-E] [-u] [-v] [-b STATUS_BAR] [-r STATUS_BAR_STYLE]
-                        [-j] [-S] [-V]
+                        [-j] [-S] [--stdout] [-V]
                         [entries ...]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
@@ -402,6 +402,8 @@ optional arguments:
                         show the status bar below the preview window if any
   -S, --show-shortcut_hints_in_title
                         show shortcut hints in the menu title
+  --stdout              print the selected menu index to stdout (in addition
+                        to the exit status)
   -V, --version         print the version number and exit
 ```
 
