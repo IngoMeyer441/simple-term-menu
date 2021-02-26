@@ -324,6 +324,7 @@ Furthermore, the `TerminalMenu` constructor takes these additional parameters to
 - `clear_menu_on_exit`: A bool value which indicates if the menu will be cleared after the `show` method. Defaults to
   `True`.
 - `cursor_index`: The initially selected item index.
+- `status_bar_below_preview`: Position the status bar below the preview window (default positioning is above).
 
 ### Command line program
 
@@ -339,7 +340,7 @@ usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
                         [-i CURSOR_INDEX] [-l] [-X] [-p PREVIEW_COMMAND]
                         [--preview-size PREVIEW_SIZE] [-k SEARCH_KEY] [-a]
                         [-E] [-u] [-v] [-b STATUS_BAR] [-r STATUS_BAR_STYLE]
-                        [-S] [-V]
+                        [-j] [-S] [-V]
                         [entries ...]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
@@ -397,6 +398,8 @@ optional arguments:
   -r STATUS_BAR_STYLE, --status_bar_style STATUS_BAR_STYLE
                         style of the status bar lines (default:
                         fg_yellow,bg_black)
+  -j, --status_bar_below_preview
+                        show the status bar below the preview window if any
   -S, --show-shortcut_hints_in_title
                         show shortcut hints in the menu title
   -V, --version         print the version number and exit
