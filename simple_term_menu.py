@@ -988,7 +988,7 @@ class TerminalMenu:
                     except subprocess.CalledProcessError as e:
                         raise PreviewCommandFailedError(
                             e.stderr.decode(encoding=self._user_locale, errors="replace").strip()
-                        )
+                        ) from e
                 else:
                     preview_string = self._preview_command(preview_argument)
                 return preview_string
