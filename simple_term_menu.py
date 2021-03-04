@@ -46,30 +46,30 @@ __version_info__ = (0, 11, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 
+DEFAULT_ACCEPT_KEYS = ("enter",)
+DEFAULT_CLEAR_MENU_ON_EXIT = True
+DEFAULT_CLEAR_SCREEN = False
+DEFAULT_CYCLE_CURSOR = True
+DEFAULT_EXIT_ON_SHORTCUT = True
 DEFAULT_MENU_CURSOR = "> "
 DEFAULT_MENU_CURSOR_STYLE = ("fg_red", "bold")
 DEFAULT_MENU_HIGHLIGHT_STYLE = ("standout",)
-DEFAULT_CYCLE_CURSOR = True
-DEFAULT_CLEAR_SCREEN = False
-DEFAULT_PREVIEW_SIZE = 0.25
-DEFAULT_SEARCH_KEY = "/"
-DEFAULT_SEARCH_CASE_SENSITIVE = False
-DEFAULT_SEARCH_HIGHLIGHT_STYLE = ("fg_black", "bg_yellow", "bold")
-DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE = ("fg_blue",)
-DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE = ("fg_gray",)
-DEFAULT_EXIT_ON_SHORTCUT = True
-DEFAULT_ACCEPT_KEYS = ("enter",)
-DEFAULT_SHOW_SEARCH_HINT = False
-DEFAULT_SHOW_SHORTCUT_HINTS = False
-DEFAULT_CLEAR_MENU_ON_EXIT = True
-DEFAULT_STATUS_BAR_STYLE = ("fg_yellow", "bg_black")
-DEFAULT_STATUS_BAR_BELOW_PREVIEW = False
-DEFAULT_SHOW_SHORTCUT_HINTS_IN_STATUS_BAR = True
 DEFAULT_MULTI_SELECT = False
-DEFAULT_MULTI_SELECT_KEY = " "
 DEFAULT_MULTI_SELECT_CURSOR = "* "
 DEFAULT_MULTI_SELECT_CURSOR_STYLE = ("fg_green", "bold")
+DEFAULT_MULTI_SELECT_KEY = " "
+DEFAULT_PREVIEW_SIZE = 0.25
+DEFAULT_SEARCH_CASE_SENSITIVE = False
+DEFAULT_SEARCH_HIGHLIGHT_STYLE = ("fg_black", "bg_yellow", "bold")
+DEFAULT_SEARCH_KEY = "/"
+DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE = ("fg_blue",)
+DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE = ("fg_gray",)
 DEFAULT_SHOW_MULTI_SELECT_HINT = False
+DEFAULT_SHOW_SEARCH_HINT = False
+DEFAULT_SHOW_SHORTCUT_HINTS = False
+DEFAULT_SHOW_SHORTCUT_HINTS_IN_STATUS_BAR = True
+DEFAULT_STATUS_BAR_BELOW_PREVIEW = False
+DEFAULT_STATUS_BAR_STYLE = ("fg_yellow", "bg_black")
 MIN_VISIBLE_MENU_ENTRIES_COUNT = 3
 
 
@@ -498,34 +498,35 @@ class TerminalMenu:
     def __init__(
         self,
         menu_entries: Iterable[str],
-        title: Optional[Union[str, Iterable[str]]] = None,
+        *,
+        accept_keys: Iterable[str] = DEFAULT_ACCEPT_KEYS,
+        clear_menu_on_exit: bool = DEFAULT_CLEAR_MENU_ON_EXIT,
+        clear_screen: bool = DEFAULT_CLEAR_SCREEN,
+        cursor_index: Optional[int] = None,
+        cycle_cursor: bool = DEFAULT_CYCLE_CURSOR,
+        exit_on_shortcut: bool = DEFAULT_EXIT_ON_SHORTCUT,
         menu_cursor: Optional[str] = DEFAULT_MENU_CURSOR,
         menu_cursor_style: Optional[Iterable[str]] = DEFAULT_MENU_CURSOR_STYLE,
         menu_highlight_style: Optional[Iterable[str]] = DEFAULT_MENU_HIGHLIGHT_STYLE,
-        cycle_cursor: bool = DEFAULT_CYCLE_CURSOR,
-        clear_screen: bool = DEFAULT_CLEAR_SCREEN,
-        preview_command: Optional[Union[str, Callable[[str], str]]] = None,
-        preview_size: float = DEFAULT_PREVIEW_SIZE,
-        search_key: Optional[str] = DEFAULT_SEARCH_KEY,
-        search_case_sensitive: bool = DEFAULT_SEARCH_CASE_SENSITIVE,
-        search_highlight_style: Optional[Iterable[str]] = DEFAULT_SEARCH_HIGHLIGHT_STYLE,
-        shortcut_key_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE,
-        shortcut_parentheses_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE,
-        exit_on_shortcut: bool = DEFAULT_EXIT_ON_SHORTCUT,
-        accept_keys: Iterable[str] = DEFAULT_ACCEPT_KEYS,
-        show_search_hint: bool = DEFAULT_SHOW_SEARCH_HINT,
-        show_shortcut_hints: bool = DEFAULT_SHOW_SHORTCUT_HINTS,
-        cursor_index: Optional[int] = None,
-        clear_menu_on_exit: bool = DEFAULT_CLEAR_MENU_ON_EXIT,
-        status_bar: Optional[Union[str, Iterable[str], Callable[[str], str]]] = None,
-        status_bar_style: Optional[Iterable[str]] = DEFAULT_STATUS_BAR_STYLE,
-        status_bar_below_preview: bool = DEFAULT_STATUS_BAR_BELOW_PREVIEW,
-        show_shortcut_hints_in_status_bar: bool = DEFAULT_SHOW_SHORTCUT_HINTS_IN_STATUS_BAR,
         multi_select: bool = DEFAULT_MULTI_SELECT,
-        multi_select_key: str = DEFAULT_MULTI_SELECT_KEY,
         multi_select_cursor: str = DEFAULT_MULTI_SELECT_CURSOR,
         multi_select_cursor_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_STYLE,
+        multi_select_key: str = DEFAULT_MULTI_SELECT_KEY,
+        preview_command: Optional[Union[str, Callable[[str], str]]] = None,
+        preview_size: float = DEFAULT_PREVIEW_SIZE,
+        search_case_sensitive: bool = DEFAULT_SEARCH_CASE_SENSITIVE,
+        search_highlight_style: Optional[Iterable[str]] = DEFAULT_SEARCH_HIGHLIGHT_STYLE,
+        search_key: Optional[str] = DEFAULT_SEARCH_KEY,
+        shortcut_key_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE,
+        shortcut_parentheses_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE,
         show_multi_select_hint: bool = DEFAULT_SHOW_MULTI_SELECT_HINT,
+        show_search_hint: bool = DEFAULT_SHOW_SEARCH_HINT,
+        show_shortcut_hints: bool = DEFAULT_SHOW_SHORTCUT_HINTS,
+        show_shortcut_hints_in_status_bar: bool = DEFAULT_SHOW_SHORTCUT_HINTS_IN_STATUS_BAR,
+        status_bar: Optional[Union[str, Iterable[str], Callable[[str], str]]] = None,
+        status_bar_below_preview: bool = DEFAULT_STATUS_BAR_BELOW_PREVIEW,
+        status_bar_style: Optional[Iterable[str]] = DEFAULT_STATUS_BAR_STYLE,
+        title: Optional[Union[str, Iterable[str]]] = None,
     ):
         def extract_shortcuts_menu_entries_and_preview_arguments(
             entries: Iterable[str],
@@ -575,34 +576,34 @@ class TerminalMenu:
             self._preview_arguments,
         ) = extract_shortcuts_menu_entries_and_preview_arguments(menu_entries)
         self._shortcuts_defined = any(key is not None for key in self._shortcut_keys)
-        self._title_lines = setup_title_or_status_bar_lines(
-            title,
-            show_shortcut_hints and not show_shortcut_hints_in_status_bar,
-            self._menu_entries,
-            self._shortcut_keys,
-            True,
-        )
+        self._accept_keys = tuple(accept_keys)
+        self._clear_menu_on_exit = clear_menu_on_exit
+        self._clear_screen = clear_screen
+        self._cycle_cursor = cycle_cursor
+        self._exit_on_shortcut = exit_on_shortcut
         self._menu_cursor = menu_cursor if menu_cursor is not None else ""
         self._menu_cursor_style = tuple(menu_cursor_style) if menu_cursor_style is not None else ()
         self._menu_highlight_style = tuple(menu_highlight_style) if menu_highlight_style is not None else ()
-        self._cycle_cursor = cycle_cursor
-        self._clear_screen = clear_screen
+        self._multi_select = multi_select
+        self._multi_select_cursor = multi_select_cursor
+        self._multi_select_cursor_style = (
+            tuple(multi_select_cursor_style) if multi_select_cursor_style is not None else ()
+        )
+        self._multi_select_key = multi_select_key
         self._preview_command = preview_command
         self._preview_size = preview_size
-        self._search_key = search_key
         self._search_case_sensitive = search_case_sensitive
         self._search_highlight_style = tuple(search_highlight_style) if search_highlight_style is not None else ()
+        self._search_key = search_key
         self._shortcut_key_highlight_style = (
             tuple(shortcut_key_highlight_style) if shortcut_key_highlight_style is not None else ()
         )
         self._shortcut_parentheses_highlight_style = (
             tuple(shortcut_parentheses_highlight_style) if shortcut_parentheses_highlight_style is not None else ()
         )
-        self._exit_on_shortcut = exit_on_shortcut
-        self._accept_keys = tuple(accept_keys)
         self._show_search_hint = show_search_hint
         self._show_shortcut_hints = show_shortcut_hints
-        self._clear_menu_on_exit = clear_menu_on_exit
+        self._show_shortcut_hints_in_status_bar = show_shortcut_hints_in_status_bar
         self._status_bar_func = None  # type: Optional[Callable[[str], str]]
         self._status_bar_lines = None  # type: Optional[Tuple[str, ...]]
         if callable(status_bar):
@@ -615,24 +616,28 @@ class TerminalMenu:
                 self._shortcut_keys,
                 False,
             )
-        self._status_bar_style = tuple(status_bar_style) if status_bar_style is not None else ()
         self._status_bar_below_preview = status_bar_below_preview
-        self._show_shortcut_hints_in_status_bar = show_shortcut_hints_in_status_bar
-        self._multi_select = multi_select
-        self._multi_select_key = multi_select_key
-        self._multi_select_cursor = multi_select_cursor
-        self._multi_select_cursor_style = (
-            tuple(multi_select_cursor_style) if multi_select_cursor_style is not None else ()
+        self._status_bar_style = tuple(status_bar_style) if status_bar_style is not None else ()
+        self._title_lines = setup_title_or_status_bar_lines(
+            title,
+            show_shortcut_hints and not show_shortcut_hints_in_status_bar,
+            self._menu_entries,
+            self._shortcut_keys,
+            True,
         )
         self._show_multi_select_hint = show_multi_select_hint
         self._chosen_accept_key = None  # type: Optional[str]
         self._chosen_menu_index = None  # type: Optional[int]
         self._chosen_menu_indices = None  # type: Optional[Tuple[int, ...]]
+        self._paint_before_next_read = False
+        self._previous_displayed_menu_height = None  # type: Optional[int]
+        self._reading_next_key = False
         self._search = self.Search(
             self._menu_entries,
             case_senitive=self._search_case_sensitive,
             show_search_hint=self._show_search_hint,
         )
+        self._selection = self.Selection(len(self._menu_entries))
         self._viewport = self.Viewport(
             len(self._menu_entries),
             len(self._title_lines),
@@ -640,19 +645,15 @@ class TerminalMenu:
             0,
             0,
         )
-        self._selection = self.Selection(len(self._menu_entries))
         self._view = self.View(self._menu_entries, self._search, self._selection, self._viewport, self._cycle_cursor)
         if cursor_index and 0 < cursor_index < len(self._menu_entries):
             self._view.active_menu_index = cursor_index
         self._search.change_callback = self._view.update_view
-        self._previous_displayed_menu_height = None  # type: Optional[int]
-        self._reading_next_key = False
-        self._paint_before_next_read = False
-        self._user_locale = get_locale()
-        self._tty_in = None  # type: Optional[TextIO]
-        self._tty_out = None  # type: Optional[TextIO]
         self._old_term = None  # type: Optional[List[Union[int, List[bytes]]]]
         self._new_term = None  # type: Optional[List[Union[int, List[bytes]]]]
+        self._tty_in = None  # type: Optional[TextIO]
+        self._tty_out = None  # type: Optional[TextIO]
+        self._user_locale = get_locale()
         self._check_for_valid_styles()
         # backspace can be queried from the terminal database but is unreliable, query the terminal directly instead
         self._init_backspace_control_character()
