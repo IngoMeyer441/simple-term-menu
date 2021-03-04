@@ -7,6 +7,17 @@ different options to the user. Menu entries can be selected with the arrow or j/
 database to detect terminal features automatically and disables styles that are not available.
 Currently, Linux and macOS are supported.
 
+## Breaking changes from version 0.x to 1.x
+
+If you update from version 0.x to 1.x, please consider these breaking changes:
+
+- The `TerminalMenu` constructor now only takes keyword-only arguments (except for the first parameter which contains
+  the menu entries). This makes it easier to add new parameters in future releases and allows to keep a well-arranged
+  parameter list.
+
+- The command line interface was revised. It now uses `-` instead of `_` to separate words consistently and rearranges
+  short options. Only the most important short options were kept to save free letters for future releases.
+
 ## Installation
 
 `simple-term-menu` is available on PyPI for Python 3.5+ and can be installed with `pip`:
