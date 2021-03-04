@@ -1227,6 +1227,9 @@ class TerminalMenu:
         assert self._codename_to_terminal_code is not None
         self._init_term()
         self._selection.clear()
+        self._chosen_accept_key = None
+        self._chosen_menu_indices = None
+        self._chosen_menu_index = None
         assert self._tty_out is not None
         if self._title_lines:
             # `print_menu` expects the cursor on the first menu item -> reserve one line for the title
@@ -1295,8 +1298,6 @@ class TerminalMenu:
             reset_signal_handling()
             self._clear_menu()
             self._reset_term()
-        self._chosen_menu_indices = None
-        self._chosen_menu_index = None
         if not menu_was_interrupted:
             chosen_menu_indices = self._selection.selected_menu_indices
             if chosen_menu_indices:
