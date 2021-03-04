@@ -1367,58 +1367,15 @@ def get_argumentparser() -> argparse.ArgumentParser:
 %(prog)s creates simple interactive menus in the terminal and returns the selected entry as exit code.
 """,
     )
-    parser.add_argument("-t", "--title", action="store", dest="title", help="menu title")
     parser.add_argument(
-        "-c",
-        "--cursor",
-        action="store",
-        dest="cursor",
-        default=DEFAULT_MENU_CURSOR,
-        help="menu cursor (default: %(default)s)",
+        "-s", "--case-sensitive", action="store_true", dest="case_sensitive", help="searches are case sensitive"
     )
     parser.add_argument(
-        "-s",
-        "--cursor_style",
-        action="store",
-        dest="cursor_style",
-        default=",".join(DEFAULT_MENU_CURSOR_STYLE),
-        help="style for the menu cursor as comma separated list (default: %(default)s)",
-    )
-    parser.add_argument(
-        "-m",
-        "--highlight_style",
-        action="store",
-        dest="highlight_style",
-        default=",".join(DEFAULT_MENU_HIGHLIGHT_STYLE),
-        help="style for the selected menu entry as comma separated list (default: %(default)s)",
-    )
-    parser.add_argument(
-        "-n",
-        "--search_highlight_style",
-        action="store",
-        dest="search_highlight_style",
-        default=",".join(DEFAULT_SEARCH_HIGHLIGHT_STYLE),
-        help="style of matched search patterns (default: %(default)s)",
-    )
-    parser.add_argument(
-        "-o",
-        "--shortcut_key_highlight_style",
-        action="store",
-        dest="shortcut_key_highlight_style",
-        default=",".join(DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE),
-        help="style of shortcut keys (default: %(default)s)",
-    )
-    parser.add_argument(
-        "-q",
-        "--shortcut_parentheses_highlight_style",
-        action="store",
-        dest="shortcut_parentheses_highlight_style",
-        default=",".join(DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE),
-        help="style of parentheses enclosing shortcut keys (default: %(default)s)",
-    )
-    parser.add_argument("-C", "--no-cycle", action="store_false", dest="cycle", help="do not cycle the menu selection")
-    parser.add_argument(
-        "-i", "--cursor-index", action="store", type=int, default=0, help="initially selected item index"
+        "-X",
+        "--no-clear-menu-on-exit",
+        action="store_false",
+        dest="clear_menu_on_exit",
+        help="do not clear the menu on exit",
     )
     parser.add_argument(
         "-l",
@@ -1428,11 +1385,70 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help="clear the screen before the menu is shown",
     )
     parser.add_argument(
-        "-X",
-        "--no-clear-menu-on-exit",
+        "--cursor",
+        action="store",
+        dest="cursor",
+        default=DEFAULT_MENU_CURSOR,
+        help='menu cursor (default: "%(default)s")',
+    )
+    parser.add_argument(
+        "-i",
+        "--cursor-index",
+        action="store",
+        dest="cursor_index",
+        type=int,
+        default=0,
+        help="initially selected item index",
+    )
+    parser.add_argument(
+        "--cursor-style",
+        action="store",
+        dest="cursor_style",
+        default=",".join(DEFAULT_MENU_CURSOR_STYLE),
+        help='style for the menu cursor as comma separated list (default: "%(default)s")',
+    )
+    parser.add_argument("-C", "--no-cycle", action="store_false", dest="cycle", help="do not cycle the menu selection")
+    parser.add_argument(
+        "-E",
+        "--no-exit-on-shortcut",
         action="store_false",
-        dest="clear_menu_on_exit",
-        help="do not clear the menu on exit",
+        dest="exit_on_shortcut",
+        help="do not exit on shortcut keys",
+    )
+    parser.add_argument(
+        "--highlight-style",
+        action="store",
+        dest="highlight_style",
+        default=",".join(DEFAULT_MENU_HIGHLIGHT_STYLE),
+        help='style for the selected menu entry as comma separated list (default: "%(default)s")',
+    )
+    parser.add_argument(
+        "-m",
+        "--multi-select",
+        action="store_true",
+        dest="multi_select",
+        help="Allow the selection of multiple entries (implies `--stdout`)",
+    )
+    parser.add_argument(
+        "--multi-select-cursor",
+        action="store",
+        dest="multi_select_cursor",
+        default=DEFAULT_MULTI_SELECT_CURSOR,
+        help='multi-select menu cursor (default: "%(default)s")',
+    )
+    parser.add_argument(
+        "--multi-select-cursor-style",
+        action="store",
+        dest="multi_select_cursor_style",
+        default=",".join(DEFAULT_MULTI_SELECT_CURSOR_STYLE),
+        help='style for the multi-select menu cursor as comma separated list (default: "%(default)s")',
+    )
+    parser.add_argument(
+        "--multi-select-key",
+        action="store",
+        dest="multi_select_key",
+        default=DEFAULT_MULTI_SELECT_KEY,
+        help=('key for toggling a selected item in a multi-selection (default: "%(default)s", '),
     )
     parser.add_argument(
         "-p",
@@ -1451,11 +1467,20 @@ def get_argumentparser() -> argparse.ArgumentParser:
         dest="preview_size",
         type=float,
         default=DEFAULT_PREVIEW_SIZE,
-        help="maximum height of the preview window in fractions of the terminal height (default: %(default)s)",
+        help='maximum height of the preview window in fractions of the terminal height (default: "%(default)s")',
     )
     parser.add_argument(
-        "-k",
-        "--search_key",
+        "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
+    )
+    parser.add_argument(
+        "--search-highlight-style",
+        action="store",
+        dest="search_highlight_style",
+        default=",".join(DEFAULT_SEARCH_HIGHLIGHT_STYLE),
+        help='style of matched search patterns (default: "%(default)s")',
+    )
+    parser.add_argument(
+        "--search-key",
         action="store",
         dest="search_key",
         default=DEFAULT_SEARCH_KEY,
@@ -1465,89 +1490,61 @@ def get_argumentparser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
-        "-a", "--case_sensitive", action="store_true", dest="case_sensitive", help="searches are case sensitive"
+        "--shortcut-key-highlight-style",
+        action="store",
+        dest="shortcut_key_highlight_style",
+        default=",".join(DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE),
+        help='style of shortcut keys (default: "%(default)s")',
     )
     parser.add_argument(
-        "-E",
-        "--no-exit-on-shortcut",
-        action="store_false",
-        dest="exit_on_shortcut",
-        help="do not exit on shortcut keys",
+        "--shortcut-parentheses-highlight-style",
+        action="store",
+        dest="shortcut_parentheses_highlight_style",
+        default=",".join(DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE),
+        help='style of parentheses enclosing shortcut keys (default: "%(default)s")',
     )
     parser.add_argument(
-        "-u",
-        "--show-search_hint",
+        "--show-search-hint",
         action="store_true",
         dest="show_search_hint",
         help="show a search hint in the search line",
     )
     parser.add_argument(
-        "-v",
-        "--show-shortcut_hints",
+        "--show-shortcut-hints",
         action="store_true",
         dest="show_shortcut_hints",
         help="show shortcut hints in the status bar",
     )
     parser.add_argument(
-        "-b",
-        "--status_bar",
-        action="store",
-        dest="status_bar",
-        help="status bar text",
-    )
-    parser.add_argument(
-        "-r",
-        "--status_bar_style",
-        action="store",
-        dest="status_bar_style",
-        default=",".join(DEFAULT_STATUS_BAR_STYLE),
-        help="style of the status bar lines (default: %(default)s)",
-    )
-    parser.add_argument(
-        "-j",
-        "--status_bar_below_preview",
-        action="store_true",
-        dest="status_bar_below_preview",
-        help="show the status bar below the preview window if any",
-    )
-    parser.add_argument(
-        "-S",
-        "--show-shortcut_hints_in_title",
+        "--show-shortcut-hints-in-title",
         action="store_false",
         dest="show_shortcut_hints_in_status_bar",
         default=True,
         help="show shortcut hints in the menu title",
     )
     parser.add_argument(
-        "-g",
-        "--multi_select",
+        "-b",
+        "--status-bar",
+        action="store",
+        dest="status_bar",
+        help="status bar text",
+    )
+    parser.add_argument(
+        "-d",
+        "--status-bar-below-preview",
         action="store_true",
-        dest="multi_select",
-        help="Allow the selection of multiple entries (implies `--stdout`)",
+        dest="status_bar_below_preview",
+        help="show the status bar below the preview window if any",
     )
     parser.add_argument(
-        "--multi_select_key",
+        "--status-bar-style",
         action="store",
-        dest="multi_select_key",
-        default=DEFAULT_MULTI_SELECT_KEY,
-        help=('key for toggling a selected item in a multi-selection (default: "%(default)s", '),
+        dest="status_bar_style",
+        default=",".join(DEFAULT_STATUS_BAR_STYLE),
+        help='style of the status bar lines (default: "%(default)s")',
     )
     parser.add_argument(
-        "--multi_select_cursor",
-        action="store",
-        dest="multi_select_cursor",
-        default=DEFAULT_MULTI_SELECT_CURSOR,
-        help="multi-select menu cursor (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--multi_select_cursor_style",
-        action="store",
-        dest="multi_select_cursor_style",
-        default=",".join(DEFAULT_MULTI_SELECT_CURSOR_STYLE),
-        help="style for the multi-select menu cursor as comma separated list (default: %(default)s)",
-    )
-    parser.add_argument(
-        "--show_multi_select_hint",
+        "--show-multi-select-hint",
         action="store_true",
         dest="show_multi_select_hint",
         help="show a multi-select hint in the status bar",
@@ -1561,9 +1558,7 @@ def get_argumentparser() -> argparse.ArgumentParser:
             'Multiple indices are separated by ";".'
         ),
     )
-    parser.add_argument(
-        "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
-    )
+    parser.add_argument("-t", "--title", action="store", dest="title", help="menu title")
     parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
     return parser
 
