@@ -69,6 +69,7 @@ DEFAULT_MULTI_SELECT = False
 DEFAULT_MULTI_SELECT_KEY = " "
 DEFAULT_MULTI_SELECT_CURSOR = "* "
 DEFAULT_MULTI_SELECT_CURSOR_STYLE = ("fg_green", "bold")
+DEFAULT_SHOW_MULTI_SELECT_HINT = False
 MIN_VISIBLE_MENU_ENTRIES_COUNT = 3
 
 
@@ -524,6 +525,7 @@ class TerminalMenu:
         multi_select_key: str = DEFAULT_MULTI_SELECT_KEY,
         multi_select_cursor: str = DEFAULT_MULTI_SELECT_CURSOR,
         multi_select_cursor_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_STYLE,
+        show_multi_select_hint: bool = DEFAULT_SHOW_MULTI_SELECT_HINT,
     ):
         def extract_shortcuts_menu_entries_and_preview_arguments(
             entries: Iterable[str],
@@ -622,6 +624,7 @@ class TerminalMenu:
         self._multi_select_cursor_style = (
             tuple(multi_select_cursor_style) if multi_select_cursor_style is not None else ()
         )
+        self._show_multi_select_hint = show_multi_select_hint
         self._chosen_accept_key = None  # type: Optional[str]
         self._chosen_menu_index = None  # type: Optional[int]
         self._chosen_menu_indices = None  # type: Optional[Tuple[int, ...]]
@@ -812,6 +815,20 @@ class TerminalMenu:
 
     def _paint_menu(self) -> None:
         def get_status_bar_lines() -> Tuple[str, ...]:
+            def get_multi_select_hint():
+                string_to_key = {
+                    " ": "space",
+                }
+                if len(self._accept_keys) == 1:
+                    accept_keys_string = "<" + self._accept_keys[0] + ">"
+                else:
+                    accept_keys_string = (
+                        "(" + ", ".join("<" + accept_key + ">" for accept_key in self._accept_keys) + ")"
+                    )
+                return "Press <{}> for multi-selection and {} to accept".format(
+                    string_to_key.get(self._multi_select_key, self._multi_select_key), accept_keys_string
+                )
+
             if self._status_bar_func is not None and self._view.active_menu_index is not None:
                 status_bar_lines = tuple(
                     self._status_bar_func(self._menu_entries[self._view.active_menu_index]).strip().split("\n")
@@ -824,6 +841,8 @@ class TerminalMenu:
                 status_bar_lines = self._status_bar_lines
             else:
                 status_bar_lines = tuple()
+            if self._multi_select and self._show_multi_select_hint:
+                status_bar_lines += (get_multi_select_hint(),)
             return status_bar_lines
 
         def apply_style(style_iterable: Optional[Iterable[str]] = None, reset: bool = True) -> None:
@@ -1527,6 +1546,12 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help="style for the multi-select menu cursor as comma separated list (default: %(default)s)",
     )
     parser.add_argument(
+        "--show_multi_select_hint",
+        action="store_true",
+        dest="show_multi_select_hint",
+        help="show a multi-select hint in the status bar",
+    )
+    parser.add_argument(
         "--stdout",
         action="store_true",
         dest="stdout",
@@ -1624,6 +1649,7 @@ def main() -> None:
             multi_select_key=args.multi_select_key,
             multi_select_cursor=args.multi_select_cursor,
             multi_select_cursor_style=args.multi_select_cursor_style,
+            show_multi_select_hint=args.show_multi_select_hint,
         )
     except InvalidStyleError as e:
         print(str(e), file=sys.stderr)

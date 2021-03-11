@@ -203,7 +203,8 @@ arbitrary menu item to add it to your selection. Press `enter` (or any other con
 currently selected entry as the last item to the selection and to return from the `show` method as usual. In
 multi-select mode, the `show` method returns a sorted tuple of all your selected menu indices instead of a single int.
 Use the `chosen_menu_entries` property to get a tuple of the menu entry strings instead. By setting `multi_select_key`
-you can define another key to toggle a selected item.
+you can define another key to toggle a selected item. By passing `show_multi_select_hint=True` a multi-select mode hint
+is shown in the status bar.
 
 #### Multi-select example
 
@@ -214,7 +215,11 @@ from simple_term_menu import TerminalMenu
 
 
 def main():
-    terminal_menu = TerminalMenu(["dog", "cat", "mouse", "squirrel"], multi_select=True)
+    terminal_menu = TerminalMenu(
+        ["dog", "cat", "mouse", "squirrel"],
+        multi_select=True,
+        show_multi_select_hint=True,
+    )
     menu_entry_indices = terminal_menu.show()
     print(menu_entry_indices)
     print(terminal_menu.chosen_menu_entries)
@@ -375,7 +380,7 @@ usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
                         [-j] [-S] [-g] [--multi_select_key MULTI_SELECT_KEY]
                         [--multi_select_cursor MULTI_SELECT_CURSOR]
                         [--multi_select_cursor_style MULTI_SELECT_CURSOR_STYLE]
-                        [--stdout] [-V]
+                        [--show_multi_select_hint] [--stdout] [-V]
                         [entries ...]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
@@ -447,6 +452,8 @@ optional arguments:
   --multi_select_cursor_style MULTI_SELECT_CURSOR_STYLE
                         style for the multi-select menu cursor as comma
                         separated list (default: fg_green,bold)
+  --show_multi_select_hint
+                        show a multi-select hint in the status bar
   --stdout              Print the selected menu index or indices to stdout (in
                         addition to the exit status). Multiple indices are
                         separated by ";".
