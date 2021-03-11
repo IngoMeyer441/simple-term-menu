@@ -443,13 +443,13 @@ optional arguments:
                         key for toggling a selected item in a multi-selection
                         (default: " ",
   --multi_select_cursor MULTI_SELECT_CURSOR
-                        multi-select menu cursor (default: > )
+                        multi-select menu cursor (default: * )
   --multi_select_cursor_style MULTI_SELECT_CURSOR_STYLE
                         style for the multi-select menu cursor as comma
-                        separated list (default: bold)
+                        separated list (default: fg_green,bold)
   --stdout              Print the selected menu index or indices to stdout (in
                         addition to the exit status). Multiple indices are
-                        separated by ",".
+                        separated by ";".
   -V, --version         print the version number and exit
 ```
 
