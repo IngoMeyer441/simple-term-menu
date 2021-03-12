@@ -7,6 +7,17 @@ different options to the user. Menu entries can be selected with the arrow or j/
 database to detect terminal features automatically and disables styles that are not available.
 Currently, Linux and macOS are supported.
 
+## Breaking changes from version 0.x to 1.x
+
+If you update from version 0.x to 1.x, please consider these breaking changes:
+
+- The `TerminalMenu` constructor now only takes keyword-only arguments (except for the first parameter which contains
+  the menu entries). This makes it easier to add new parameters in future releases and allows to keep a well-arranged
+  parameter list.
+
+- The command line interface was revised. It now uses `-` instead of `_` to separate words consistently and rearranges
+  short options. Only the most important short options were kept to save free letters for future releases.
+
 ## Installation
 
 `simple-term-menu` is available on PyPI for Python 3.5+ and can be installed with `pip`:
@@ -370,17 +381,21 @@ of the selected menu entry. The exit code 0 reports the cancel action. The follo
 supported:
 
 ```
-usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
-                        [-m HIGHLIGHT_STYLE] [-n SEARCH_HIGHLIGHT_STYLE]
-                        [-o SHORTCUT_KEY_HIGHLIGHT_STYLE]
-                        [-q SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE] [-C]
-                        [-i CURSOR_INDEX] [-l] [-X] [-p PREVIEW_COMMAND]
-                        [--preview-size PREVIEW_SIZE] [-k SEARCH_KEY] [-a]
-                        [-E] [-u] [-v] [-b STATUS_BAR] [-r STATUS_BAR_STYLE]
-                        [-j] [-S] [-g] [--multi_select_key MULTI_SELECT_KEY]
-                        [--multi_select_cursor MULTI_SELECT_CURSOR]
-                        [--multi_select_cursor_style MULTI_SELECT_CURSOR_STYLE]
-                        [--show_multi_select_hint] [--stdout] [-V]
+usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
+                        [-i CURSOR_INDEX] [--cursor-style CURSOR_STYLE] [-C]
+                        [-E] [--highlight-style HIGHLIGHT_STYLE] [-m]
+                        [--multi-select-cursor MULTI_SELECT_CURSOR]
+                        [--multi-select-cursor-style MULTI_SELECT_CURSOR_STYLE]
+                        [--multi-select-key MULTI_SELECT_KEY]
+                        [-p PREVIEW_COMMAND] [--preview-size PREVIEW_SIZE]
+                        [-V] [--search-highlight-style SEARCH_HIGHLIGHT_STYLE]
+                        [--search-key SEARCH_KEY]
+                        [--shortcut-key-highlight-style SHORTCUT_KEY_HIGHLIGHT_STYLE]
+                        [--shortcut-parentheses-highlight-style SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE]
+                        [--show-search-hint] [--show-shortcut-hints]
+                        [--show-shortcut-hints-in-title] [-b STATUS_BAR] [-d]
+                        [--status-bar-style STATUS_BAR_STYLE]
+                        [--show-multi-select-hint] [--stdout] [-t TITLE]
                         [entries ...]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
@@ -390,30 +405,32 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -t TITLE, --title TITLE
-                        menu title
-  -c CURSOR, --cursor CURSOR
-                        menu cursor (default: > )
-  -s CURSOR_STYLE, --cursor_style CURSOR_STYLE
-                        style for the menu cursor as comma separated list
-                        (default: fg_red,bold)
-  -m HIGHLIGHT_STYLE, --highlight_style HIGHLIGHT_STYLE
-                        style for the selected menu entry as comma separated
-                        list (default: standout)
-  -n SEARCH_HIGHLIGHT_STYLE, --search_highlight_style SEARCH_HIGHLIGHT_STYLE
-                        style of matched search patterns (default:
-                        fg_black,bg_yellow,bold)
-  -o SHORTCUT_KEY_HIGHLIGHT_STYLE, --shortcut_key_highlight_style SHORTCUT_KEY_HIGHLIGHT_STYLE
-                        style of shortcut keys (default: fg_blue)
-  -q SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE, --shortcut_parentheses_highlight_style SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE
-                        style of parentheses enclosing shortcut keys (default:
-                        fg_gray)
-  -C, --no-cycle        do not cycle the menu selection
-  -i CURSOR_INDEX, --cursor-index CURSOR_INDEX
-                        initially selected item index
-  -l, --clear-screen    clear the screen before the menu is shown
+  -s, --case-sensitive  searches are case sensitive
   -X, --no-clear-menu-on-exit
                         do not clear the menu on exit
+  -l, --clear-screen    clear the screen before the menu is shown
+  --cursor CURSOR       menu cursor (default: "> ")
+  -i CURSOR_INDEX, --cursor-index CURSOR_INDEX
+                        initially selected item index
+  --cursor-style CURSOR_STYLE
+                        style for the menu cursor as comma separated list
+                        (default: "fg_red,bold")
+  -C, --no-cycle        do not cycle the menu selection
+  -E, --no-exit-on-shortcut
+                        do not exit on shortcut keys
+  --highlight-style HIGHLIGHT_STYLE
+                        style for the selected menu entry as comma separated
+                        list (default: "standout")
+  -m, --multi-select    Allow the selection of multiple entries (implies
+                        `--stdout`)
+  --multi-select-cursor MULTI_SELECT_CURSOR
+                        multi-select menu cursor (default: "* ")
+  --multi-select-cursor-style MULTI_SELECT_CURSOR_STYLE
+                        style for the multi-select menu cursor as comma
+                        separated list (default: "fg_green,bold")
+  --multi-select-key MULTI_SELECT_KEY
+                        key for toggling a selected item in a multi-selection
+                        (default: " ",
   -p PREVIEW_COMMAND, --preview PREVIEW_COMMAND
                         Command to generate a preview for the selected menu
                         entry. "{}" can be used as placeholder for the menu
@@ -421,43 +438,39 @@ optional arguments:
                         (separated by "|"), this is used instead.
   --preview-size PREVIEW_SIZE
                         maximum height of the preview window in fractions of
-                        the terminal height (default: 0.25)
-  -k SEARCH_KEY, --search_key SEARCH_KEY
+                        the terminal height (default: "0.25")
+  -V, --version         print the version number and exit
+  --search-highlight-style SEARCH_HIGHLIGHT_STYLE
+                        style of matched search patterns (default:
+                        "fg_black,bg_yellow,bold")
+  --search-key SEARCH_KEY
                         key to start a search (default: "/", "none" is treated
                         a special value which activates the search on any
                         letter key)
-  -a, --case_sensitive  searches are case sensitive
-  -E, --no-exit-on-shortcut
-                        do not exit on shortcut keys
-  -u, --show-search_hint
-                        show a search hint in the search line
-  -v, --show-shortcut_hints
+  --shortcut-key-highlight-style SHORTCUT_KEY_HIGHLIGHT_STYLE
+                        style of shortcut keys (default: "fg_blue")
+  --shortcut-parentheses-highlight-style SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE
+                        style of parentheses enclosing shortcut keys (default:
+                        "fg_gray")
+  --show-search-hint    show a search hint in the search line
+  --show-shortcut-hints
                         show shortcut hints in the status bar
-  -b STATUS_BAR, --status_bar STATUS_BAR
-                        status bar text
-  -r STATUS_BAR_STYLE, --status_bar_style STATUS_BAR_STYLE
-                        style of the status bar lines (default:
-                        fg_yellow,bg_black)
-  -j, --status_bar_below_preview
-                        show the status bar below the preview window if any
-  -S, --show-shortcut_hints_in_title
+  --show-shortcut-hints-in-title
                         show shortcut hints in the menu title
-  -g, --multi_select    Allow the selection of multiple entries (implies
-                        `--stdout`)
-  --multi_select_key MULTI_SELECT_KEY
-                        key for toggling a selected item in a multi-selection
-                        (default: " ",
-  --multi_select_cursor MULTI_SELECT_CURSOR
-                        multi-select menu cursor (default: * )
-  --multi_select_cursor_style MULTI_SELECT_CURSOR_STYLE
-                        style for the multi-select menu cursor as comma
-                        separated list (default: fg_green,bold)
-  --show_multi_select_hint
+  -b STATUS_BAR, --status-bar STATUS_BAR
+                        status bar text
+  -d, --status-bar-below-preview
+                        show the status bar below the preview window if any
+  --status-bar-style STATUS_BAR_STYLE
+                        style of the status bar lines (default:
+                        "fg_yellow,bg_black")
+  --show-multi-select-hint
                         show a multi-select hint in the status bar
   --stdout              Print the selected menu index or indices to stdout (in
                         addition to the exit status). Multiple indices are
                         separated by ";".
-  -V, --version         print the version number and exit
+  -t TITLE, --title TITLE
+                        menu title
 ```
 
 #### Example with preview option
@@ -487,6 +500,7 @@ This code only works in python3. Install per
 
 """
 import time
+
 from simple_term_menu import TerminalMenu
 
 
@@ -498,24 +512,28 @@ def main():
     main_menu_style = ("bg_red", "fg_yellow")
     main_menu_exit = False
 
-    main_menu = TerminalMenu(menu_entries=main_menu_items,
-                             title=main_menu_title,
-                             menu_cursor=main_menu_cursor,
-                             menu_cursor_style=main_menu_cursor_style,
-                             menu_highlight_style=main_menu_style,
-                             cycle_cursor=True,
-                             clear_screen=True)
+    main_menu = TerminalMenu(
+        menu_entries=main_menu_items,
+        title=main_menu_title,
+        menu_cursor=main_menu_cursor,
+        menu_cursor_style=main_menu_cursor_style,
+        menu_highlight_style=main_menu_style,
+        cycle_cursor=True,
+        clear_screen=True,
+    )
 
     edit_menu_title = "  Edit Menu\n"
     edit_menu_items = ["Edit Config", "Save Settings", "Back to Main Menu"]
     edit_menu_back = False
-    edit_menu = TerminalMenu(edit_menu_items,
-                             edit_menu_title,
-                             main_menu_cursor,
-                             main_menu_cursor_style,
-                             main_menu_style,
-                             cycle_cursor=True,
-                             clear_screen=True)
+    edit_menu = TerminalMenu(
+        edit_menu_items,
+        title=edit_menu_title,
+        menu_cursor=main_menu_cursor,
+        menu_cursor_style=main_menu_cursor_style,
+        menu_highlight_style=main_menu_style,
+        cycle_cursor=True,
+        clear_screen=True,
+    )
 
     while not main_menu_exit:
         main_sel = main_menu.show()
