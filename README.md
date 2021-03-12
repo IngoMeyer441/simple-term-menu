@@ -58,7 +58,9 @@ cancel the menu with escape, `q` or `<Ctrl>-C`. `show` returns the selected menu
 canceled.
 
 You can pass an optional `title` to the `TerminalMenu` constructor which will be placed above the menu. `title` can be a
-simple string, a multiline string (with `\n` newlines) or a list of strings.
+simple string, a multiline string (with `\n` newlines) or a list of strings. The same applies to the `status_bar`
+parameter, which places a status bar below the menu. Moreover, you can use a callable as `status_bar` parameter which
+takes the currently selected entry and returns a status bar string.
 
 ### Styling
 
@@ -100,7 +102,13 @@ You can alter the following styles:
 - `shortcut_parentheses_highlight_style`: The style of parentheses enclosing shortcut keys. The default style is
   `("fg_gray",)`.
 
+- `status_bar_style`: The style of the status bar below the menu. The default style is `("fg_yellow", "bg_black")`.
+
+- `multi_select_cursor_style`: The style of the cursor which pins a selected entry in a multi-selection. The default
+  style is `("bold",)`.
+
 By setting `menu_cursor` you can define another cursor or disable it (`None`). The default cursor is `"> "`.
+The parameter `multi_select_cursor` customizes the multi-select cursor (the default is also `"> "`).
 
 ### Searching
 
@@ -132,8 +140,9 @@ shortcut target, pass `exit_on_shortcut=False` to the `TerminalMenu` constructor
 
 If you configured the search to be activated on every letter key, the shortcut feature will be disabled.
 
-Pass `show_shortcut_hints=True` to the `TerminalMenu` constructor to display shortcut hints in the menu title (useful
-for very long menus which need scrolling).
+Pass `show_shortcut_hints=True` to the `TerminalMenu` constructor to display shortcut hints in the status bar (useful
+for very long menus which need scrolling). Additionally pass `show_shortcut_hints_in_status_bar=False` if you prefer
+shortcut hints in the menu title.
 
 #### Shortcuts example
 
@@ -174,7 +183,6 @@ carriage return).
 ```python
 #!/usr/bin/env python3
 
-import os
 from simple_term_menu import TerminalMenu
 
 
@@ -188,6 +196,40 @@ if __name__ == "__main__":
     main()
 ```
 
+### Multi-select
+
+Pass `multi_select=True` to the `TerminalMenu` constructor to enable the multi-select mode. Press ``space`` on an
+arbitrary menu item to add it to your selection. Press `enter` (or any other configured `accept_key`) to add the
+currently selected entry as the last item to the selection and to return from the `show` method as usual. In
+multi-select mode, the `show` method returns a sorted tuple of all your selected menu indices instead of a single int.
+Use the `chosen_menu_entries` property to get a tuple of the menu entry strings instead. By setting `multi_select_key`
+you can define another key to toggle a selected item. By passing `show_multi_select_hint=True` a multi-select mode hint
+is shown in the status bar.
+
+#### Multi-select example
+
+```python
+#!/usr/bin/env python3
+
+from simple_term_menu import TerminalMenu
+
+
+def main():
+    terminal_menu = TerminalMenu(
+        ["dog", "cat", "mouse", "squirrel"],
+        multi_select=True,
+        show_multi_select_hint=True,
+    )
+    menu_entry_indices = terminal_menu.show()
+    print(menu_entry_indices)
+    print(terminal_menu.chosen_menu_entries)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+![screenshot_multi_select](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/multi_select.png)
 
 ### Preview window
 
@@ -319,6 +361,7 @@ Furthermore, the `TerminalMenu` constructor takes these additional parameters to
 - `clear_menu_on_exit`: A bool value which indicates if the menu will be cleared after the `show` method. Defaults to
   `True`.
 - `cursor_index`: The initially selected item index.
+- `status_bar_below_preview`: Position the status bar below the preview window (default positioning is above).
 
 ### Command line program
 
@@ -333,8 +376,12 @@ usage: simple-term-menu [-h] [-t TITLE] [-c CURSOR] [-s CURSOR_STYLE]
                         [-q SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE] [-C]
                         [-i CURSOR_INDEX] [-l] [-X] [-p PREVIEW_COMMAND]
                         [--preview-size PREVIEW_SIZE] [-k SEARCH_KEY] [-a]
-                        [-E] [-u] [-v] [-V]
-                        [entries [entries ...]]
+                        [-E] [-u] [-v] [-b STATUS_BAR] [-r STATUS_BAR_STYLE]
+                        [-j] [-S] [-g] [--multi_select_key MULTI_SELECT_KEY]
+                        [--multi_select_cursor MULTI_SELECT_CURSOR]
+                        [--multi_select_cursor_style MULTI_SELECT_CURSOR_STYLE]
+                        [--show_multi_select_hint] [--stdout] [-V]
+                        [entries ...]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
 
@@ -385,7 +432,31 @@ optional arguments:
   -u, --show-search_hint
                         show a search hint in the search line
   -v, --show-shortcut_hints
+                        show shortcut hints in the status bar
+  -b STATUS_BAR, --status_bar STATUS_BAR
+                        status bar text
+  -r STATUS_BAR_STYLE, --status_bar_style STATUS_BAR_STYLE
+                        style of the status bar lines (default:
+                        fg_yellow,bg_black)
+  -j, --status_bar_below_preview
+                        show the status bar below the preview window if any
+  -S, --show-shortcut_hints_in_title
                         show shortcut hints in the menu title
+  -g, --multi_select    Allow the selection of multiple entries (implies
+                        `--stdout`)
+  --multi_select_key MULTI_SELECT_KEY
+                        key for toggling a selected item in a multi-selection
+                        (default: " ",
+  --multi_select_cursor MULTI_SELECT_CURSOR
+                        multi-select menu cursor (default: * )
+  --multi_select_cursor_style MULTI_SELECT_CURSOR_STYLE
+                        style for the multi-select menu cursor as comma
+                        separated list (default: fg_green,bold)
+  --show_multi_select_hint
+                        show a multi-select hint in the status bar
+  --stdout              Print the selected menu index or indices to stdout (in
+                        addition to the exit status). Multiple indices are
+                        separated by ";".
   -V, --version         print the version number and exit
 ```
 
