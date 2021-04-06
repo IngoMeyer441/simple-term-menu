@@ -1275,9 +1275,15 @@ class TerminalMenu:
                 else:
                     next_key = next_key.lower()
                 if self._search_key is not None and not self._search and next_key in self._shortcut_keys:
-                    self._view.active_menu_index = self._shortcut_keys.index(next_key)
+                    shortcut_menu_index = self._shortcut_keys.index(next_key)
                     if self._exit_on_shortcut:
+                        self._selection.add(shortcut_menu_index)
                         break
+                    else:
+                        if self._multi_select:
+                            self._selection.toggle(shortcut_menu_index)
+                        else:
+                            self._view.active_menu_index = shortcut_menu_index
                 elif next_key in current_menu_action_to_keys["menu_up"]:
                     self._view.decrement_active_index()
                 elif next_key in current_menu_action_to_keys["menu_down"]:
