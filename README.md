@@ -215,7 +215,9 @@ currently selected entry as the last item to the selection and to return from th
 multi-select mode, the `show` method returns a sorted tuple of all your selected menu indices instead of a single int.
 Use the `chosen_menu_entries` property to get a tuple of the menu entry strings instead. By setting `multi_select_key`
 you can define another key to toggle a selected item. By passing `show_multi_select_hint=True` a multi-select mode hint
-is shown in the status bar. If you don't want the `accept_key` to also select the last highlighted item you can pass `multi_select_select_on_accept=False` (if no menu item is explicitly selected, the last highlighted menu item will still be added to the selection).
+is shown in the status bar. If you don't want the `accept_key` to also select the last highlighted item you can pass
+`multi_select_select_on_accept=False` (if no menu item is explicitly selected, the last highlighted menu item will still
+be added to the selection).
 
 #### Multi-select example
 
