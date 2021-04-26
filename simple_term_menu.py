@@ -42,7 +42,7 @@ __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2021 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (1, 0, 1)
+__version_info__ = (1, 1, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -58,6 +58,7 @@ DEFAULT_MULTI_SELECT = False
 DEFAULT_MULTI_SELECT_CURSOR = "* "
 DEFAULT_MULTI_SELECT_CURSOR_STYLE = ("fg_green", "bold")
 DEFAULT_MULTI_SELECT_KEY = " "
+DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT = True
 DEFAULT_PREVIEW_SIZE = 0.25
 DEFAULT_SEARCH_CASE_SENSITIVE = False
 DEFAULT_SEARCH_HIGHLIGHT_STYLE = ("fg_black", "bg_yellow", "bold")
@@ -230,6 +231,9 @@ class TerminalMenu:
         def toggle(self, menu_index: int) -> bool:
             self[menu_index] = menu_index not in self._selected_menu_indices
             return self[menu_index]
+
+        def __bool__(self) -> bool:
+            return bool(self._selected_menu_indices)
 
         def __contains__(self, menu_index: int) -> bool:
             return menu_index in self._selected_menu_indices
@@ -512,6 +516,7 @@ class TerminalMenu:
         multi_select_cursor: str = DEFAULT_MULTI_SELECT_CURSOR,
         multi_select_cursor_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_STYLE,
         multi_select_key: str = DEFAULT_MULTI_SELECT_KEY,
+        multi_select_select_on_accept: bool = DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT,
         preview_command: Optional[Union[str, Callable[[str], str]]] = None,
         preview_size: float = DEFAULT_PREVIEW_SIZE,
         search_case_sensitive: bool = DEFAULT_SEARCH_CASE_SENSITIVE,
@@ -590,6 +595,7 @@ class TerminalMenu:
             tuple(multi_select_cursor_style) if multi_select_cursor_style is not None else ()
         )
         self._multi_select_key = multi_select_key
+        self._multi_select_select_on_accept = multi_select_select_on_accept
         self._preview_command = preview_command
         self._preview_size = preview_size
         self._search_case_sensitive = search_case_sensitive
@@ -826,8 +832,10 @@ class TerminalMenu:
                     accept_keys_string = (
                         "(" + ", ".join("<" + accept_key + ">" for accept_key in self._accept_keys) + ")"
                     )
-                return "Press <{}> for multi-selection and {} to accept".format(
-                    string_to_key.get(self._multi_select_key, self._multi_select_key), accept_keys_string
+                return "Press <{}> for multi-selection and {} to {}accept".format(
+                    string_to_key.get(self._multi_select_key, self._multi_select_key),
+                    accept_keys_string,
+                    "select and " if self._multi_select_select_on_accept else "",
                 )
 
             if self._status_bar_func is not None and self._view.active_menu_index is not None:
@@ -1293,7 +1301,8 @@ class TerminalMenu:
                         self._selection.toggle(self._view.active_menu_index)
                 elif next_key in current_menu_action_to_keys["accept"]:
                     if self._view.active_menu_index is not None:
-                        self._selection.add(self._view.active_menu_index)
+                        if self._multi_select_select_on_accept or not self._selection:
+                            self._selection.add(self._view.active_menu_index)
                     self._chosen_accept_key = next_key
                     break
                 elif next_key in current_menu_action_to_keys["quit"]:
@@ -1455,6 +1464,15 @@ def get_argumentparser() -> argparse.ArgumentParser:
         dest="multi_select_key",
         default=DEFAULT_MULTI_SELECT_KEY,
         help=('key for toggling a selected item in a multi-selection (default: "%(default)s", '),
+    )
+    parser.add_argument(
+        "--multi-select-no-select-on-accept",
+        action="store_false",
+        dest="multi_select_select_on_accept",
+        help=(
+            "do not select the currently highlighted menu item when the accept key is pressed "
+            "(it is still selected if no other item was selected before)"
+        ),
     )
     parser.add_argument(
         "-p",
@@ -1651,6 +1669,7 @@ def main() -> None:
             multi_select_key=args.multi_select_key,
             multi_select_cursor=args.multi_select_cursor,
             multi_select_cursor_style=args.multi_select_cursor_style,
+            multi_select_select_on_accept=args.multi_select_select_on_accept,
             show_multi_select_hint=args.show_multi_select_hint,
         )
     except InvalidStyleError as e:

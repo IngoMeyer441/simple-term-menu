@@ -215,7 +215,9 @@ currently selected entry as the last item to the selection and to return from th
 multi-select mode, the `show` method returns a sorted tuple of all your selected menu indices instead of a single int.
 Use the `chosen_menu_entries` property to get a tuple of the menu entry strings instead. By setting `multi_select_key`
 you can define another key to toggle a selected item. By passing `show_multi_select_hint=True` a multi-select mode hint
-is shown in the status bar.
+is shown in the status bar. If you don't want the `accept_key` to also select the last highlighted item you can pass
+`multi_select_select_on_accept=False` (if no menu item is explicitly selected, the last highlighted menu item will still
+be added to the selection).
 
 #### Multi-select example
 
@@ -387,6 +389,7 @@ usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [--multi-select-cursor MULTI_SELECT_CURSOR]
                         [--multi-select-cursor-style MULTI_SELECT_CURSOR_STYLE]
                         [--multi-select-key MULTI_SELECT_KEY]
+                        [--multi-select-no-select-on-accept]
                         [-p PREVIEW_COMMAND] [--preview-size PREVIEW_SIZE]
                         [-V] [--search-highlight-style SEARCH_HIGHLIGHT_STYLE]
                         [--search-key SEARCH_KEY]
@@ -431,6 +434,10 @@ optional arguments:
   --multi-select-key MULTI_SELECT_KEY
                         key for toggling a selected item in a multi-selection
                         (default: " ",
+  --multi-select-no-select-on-accept
+                        do not select the currently highlighted menu item when
+                        the accept key is pressed (it is still selected if no
+                        other item was selected before)
   -p PREVIEW_COMMAND, --preview PREVIEW_COMMAND
                         Command to generate a preview for the selected menu
                         entry. "{}" can be used as placeholder for the menu
