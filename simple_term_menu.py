@@ -832,8 +832,10 @@ class TerminalMenu:
                     accept_keys_string = (
                         "(" + ", ".join("<" + accept_key + ">" for accept_key in self._accept_keys) + ")"
                     )
-                return "Press <{}> for multi-selection and {} to accept".format(
-                    string_to_key.get(self._multi_select_key, self._multi_select_key), accept_keys_string
+                return "Press <{}> for multi-selection and {} to {}accept".format(
+                    string_to_key.get(self._multi_select_key, self._multi_select_key),
+                    accept_keys_string,
+                    "select and " if self._multi_select_select_on_accept else "",
                 )
 
             if self._status_bar_func is not None and self._view.active_menu_index is not None:
