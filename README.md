@@ -257,7 +257,8 @@ The additional keyword argument `preview_size` can be used to control the height
 fraction of the complete terminal height (default: `0.25`). The width cannot be set, it is always the complete width of
 the terminal window.
 
-Pass `preview_border=False` to deactivate the border around the preview window which is drawn by default.
+Pass `preview_title` with a string of your choice to customize the preview window title (default: `"preview"`) or
+`preview_border=False` to deactivate the border around the preview window (also deactivates the title string).
 
 Preview commands are allowed to generate [ANSI escape color codes](https://en.wikipedia.org/wiki/ANSI_escape_code#SGR).
 
@@ -394,6 +395,7 @@ usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [--multi-select-no-select-on-accept]
                         [-p PREVIEW_COMMAND] [--no-preview-border]
                         [--preview-size PREVIEW_SIZE]
+                        [--preview-title PREVIEW_TITLE]
                         [--search-highlight-style SEARCH_HIGHLIGHT_STYLE]
                         [--search-key SEARCH_KEY]
                         [--shortcut-key-highlight-style SHORTCUT_KEY_HIGHLIGHT_STYLE]
@@ -451,6 +453,8 @@ optional arguments:
   --preview-size PREVIEW_SIZE
                         maximum height of the preview window in fractions of
                         the terminal height (default: "0.25")
+  --preview-title PREVIEW_TITLE
+                        title of the preview window (default: "preview")
   --search-highlight-style SEARCH_HIGHLIGHT_STYLE
                         style of matched search patterns (default:
                         "fg_black,bg_yellow,bold")

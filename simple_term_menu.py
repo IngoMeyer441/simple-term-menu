@@ -61,6 +61,7 @@ DEFAULT_MULTI_SELECT_KEY = " "
 DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT = True
 DEFAULT_PREVIEW_BORDER = True
 DEFAULT_PREVIEW_SIZE = 0.25
+DEFAULT_PREVIEW_TITLE = "preview"
 DEFAULT_SEARCH_CASE_SENSITIVE = False
 DEFAULT_SEARCH_HIGHLIGHT_STYLE = ("fg_black", "bg_yellow", "bold")
 DEFAULT_SEARCH_KEY = "/"
@@ -521,6 +522,7 @@ class TerminalMenu:
         preview_border: bool = DEFAULT_PREVIEW_BORDER,
         preview_command: Optional[Union[str, Callable[[str], str]]] = None,
         preview_size: float = DEFAULT_PREVIEW_SIZE,
+        preview_title: str = DEFAULT_PREVIEW_TITLE,
         search_case_sensitive: bool = DEFAULT_SEARCH_CASE_SENSITIVE,
         search_highlight_style: Optional[Iterable[str]] = DEFAULT_SEARCH_HIGHLIGHT_STYLE,
         search_key: Optional[str] = DEFAULT_SEARCH_KEY,
@@ -601,6 +603,7 @@ class TerminalMenu:
         self._preview_border = preview_border
         self._preview_command = preview_command
         self._preview_size = preview_size
+        self._preview_title = preview_title
         self._search_case_sensitive = search_case_sensitive
         self._search_highlight_style = tuple(search_highlight_style) if search_highlight_style is not None else ()
         self._search_key = search_key
@@ -1090,9 +1093,9 @@ class TerminalMenu:
                     self._tty_out.write(
                         (
                             BoxDrawingCharacters.upper_left
-                            + (2 * BoxDrawingCharacters.horizontal + " preview")[: num_cols - 3]
+                            + (2 * BoxDrawingCharacters.horizontal + " " + self._preview_title)[: num_cols - 3]
                             + " "
-                            + (num_cols - 13) * BoxDrawingCharacters.horizontal
+                            + (num_cols - len(self._preview_title) - 6) * BoxDrawingCharacters.horizontal
                             + BoxDrawingCharacters.upper_right
                         )[:num_cols]
                         + "\n"
@@ -1503,6 +1506,13 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help='maximum height of the preview window in fractions of the terminal height (default: "%(default)s")',
     )
     parser.add_argument(
+        "--preview-title",
+        action="store",
+        dest="preview_title",
+        default=DEFAULT_PREVIEW_TITLE,
+        help='title of the preview window (default: "%(default)s")',
+    )
+    parser.add_argument(
         "--search-highlight-style",
         action="store",
         dest="search_highlight_style",
@@ -1668,6 +1678,7 @@ def main() -> None:
             preview_border=args.preview_border,
             preview_command=args.preview_command,
             preview_size=args.preview_size,
+            preview_title=args.preview_title,
             search_case_sensitive=args.case_sensitive,
             search_highlight_style=args.search_highlight_style,
             search_key=args.search_key,
