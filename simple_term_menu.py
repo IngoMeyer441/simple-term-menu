@@ -59,6 +59,7 @@ DEFAULT_MULTI_SELECT_CURSOR = "* "
 DEFAULT_MULTI_SELECT_CURSOR_STYLE = ("fg_green", "bold")
 DEFAULT_MULTI_SELECT_KEY = " "
 DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT = True
+DEFAULT_PREVIEW_BORDER = True
 DEFAULT_PREVIEW_SIZE = 0.25
 DEFAULT_SEARCH_CASE_SENSITIVE = False
 DEFAULT_SEARCH_HIGHLIGHT_STYLE = ("fg_black", "bg_yellow", "bold")
@@ -517,6 +518,7 @@ class TerminalMenu:
         multi_select_cursor_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_STYLE,
         multi_select_key: str = DEFAULT_MULTI_SELECT_KEY,
         multi_select_select_on_accept: bool = DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT,
+        preview_border: bool = DEFAULT_PREVIEW_BORDER,
         preview_command: Optional[Union[str, Callable[[str], str]]] = None,
         preview_size: float = DEFAULT_PREVIEW_SIZE,
         search_case_sensitive: bool = DEFAULT_SEARCH_CASE_SENSITIVE,
@@ -596,6 +598,7 @@ class TerminalMenu:
         )
         self._multi_select_key = multi_select_key
         self._multi_select_select_on_accept = multi_select_select_on_accept
+        self._preview_border = preview_border
         self._preview_command = preview_command
         self._preview_size = preview_size
         self._search_case_sensitive = search_case_sensitive
@@ -1082,49 +1085,49 @@ class TerminalMenu:
                 preview_string = "The preview command failed with error message:\n\n" + str(e)
             self._tty_out.write(current_menu_height * self._codename_to_terminal_code["cursor_down"])
             if preview_string is not None:
-                self._tty_out.write(
-                    self._codename_to_terminal_code["cursor_down"]
-                    + "\r"
-                    + (
-                        BoxDrawingCharacters.upper_left
-                        + (2 * BoxDrawingCharacters.horizontal + " preview")[: num_cols - 3]
-                        + " "
-                        + (num_cols - 13) * BoxDrawingCharacters.horizontal
-                        + BoxDrawingCharacters.upper_right
-                    )[:num_cols]
-                    + "\n"
-                )
+                self._tty_out.write(self._codename_to_terminal_code["cursor_down"] + "\r")
+                if self._preview_border:
+                    self._tty_out.write(
+                        (
+                            BoxDrawingCharacters.upper_left
+                            + (2 * BoxDrawingCharacters.horizontal + " preview")[: num_cols - 3]
+                            + " "
+                            + (num_cols - 13) * BoxDrawingCharacters.horizontal
+                            + BoxDrawingCharacters.upper_right
+                        )[:num_cols]
+                        + "\n"
+                    )
                 # `finditer` can be used as a generator version of `str.join`
                 for i, line in enumerate(
                     match.group(0) for match in re.finditer(r"^.*$", preview_string, re.MULTILINE)
                 ):
-                    if i >= preview_max_num_lines - 2:
+                    if i >= preview_max_num_lines - (2 if self._preview_border else 0):
                         preview_num_lines = preview_max_num_lines
                         break
-                    limited_line, limited_line_len = limit_string_with_escape_codes(line, num_cols - 3)
+                    limited_line, limited_line_len = limit_string_with_escape_codes(
+                        line, num_cols - (3 if self._preview_border else 0)
+                    )
                     self._tty_out.write(
                         (
-                            BoxDrawingCharacters.vertical
-                            + (
-                                " "
-                                + limited_line
-                                + self._codename_to_terminal_code["reset_attributes"]
-                                + max(num_cols - limited_line_len - 3, 0) * " "
-                            )
-                            + BoxDrawingCharacters.vertical
+                            ((BoxDrawingCharacters.vertical + " ") if self._preview_border else "")
+                            + limited_line
+                            + self._codename_to_terminal_code["reset_attributes"]
+                            + max(num_cols - limited_line_len - (3 if self._preview_border else 0), 0) * " "
+                            + (BoxDrawingCharacters.vertical if self._preview_border else "")
                         )
-                        + "\n"
                     )
                 else:
-                    preview_num_lines = i + 3
-                self._tty_out.write(
-                    (
-                        BoxDrawingCharacters.lower_left
-                        + (num_cols - 2) * BoxDrawingCharacters.horizontal
-                        + BoxDrawingCharacters.lower_right
-                    )[:num_cols]
-                    + "\r"
-                )
+                    preview_num_lines = i + (3 if self._preview_border else 1)
+                if self._preview_border:
+                    self._tty_out.write(
+                        "\n"
+                        + (
+                            BoxDrawingCharacters.lower_left
+                            + (num_cols - 2) * BoxDrawingCharacters.horizontal
+                            + BoxDrawingCharacters.lower_right
+                        )[:num_cols]
+                    )
+                self._tty_out.write("\r")
             else:
                 preview_num_lines = 0
             self._tty_out.write(
@@ -1486,6 +1489,12 @@ def get_argumentparser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--no-preview-border",
+        action="store_false",
+        dest="preview_border",
+        help="do not draw a border around the preview window",
+    )
+    parser.add_argument(
         "--preview-size",
         action="store",
         dest="preview_size",
@@ -1656,6 +1665,7 @@ def main() -> None:
             multi_select_cursor_style=args.multi_select_cursor_style,
             multi_select_key=args.multi_select_key,
             multi_select_select_on_accept=args.multi_select_select_on_accept,
+            preview_border=args.preview_border,
             preview_command=args.preview_command,
             preview_size=args.preview_size,
             search_case_sensitive=args.case_sensitive,
