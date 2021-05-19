@@ -391,14 +391,15 @@ usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [--multi-select-key MULTI_SELECT_KEY]
                         [--multi-select-no-select-on-accept]
                         [-p PREVIEW_COMMAND] [--preview-size PREVIEW_SIZE]
-                        [-V] [--search-highlight-style SEARCH_HIGHLIGHT_STYLE]
+                        [--search-highlight-style SEARCH_HIGHLIGHT_STYLE]
                         [--search-key SEARCH_KEY]
                         [--shortcut-key-highlight-style SHORTCUT_KEY_HIGHLIGHT_STYLE]
                         [--shortcut-parentheses-highlight-style SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE]
-                        [--show-search-hint] [--show-shortcut-hints]
+                        [--show-multi-select-hint] [--show-search-hint]
+                        [--show-shortcut-hints]
                         [--show-shortcut-hints-in-title] [-b STATUS_BAR] [-d]
-                        [--status-bar-style STATUS_BAR_STYLE]
-                        [--show-multi-select-hint] [--stdout] [-t TITLE]
+                        [--status-bar-style STATUS_BAR_STYLE] [--stdout]
+                        [-t TITLE] [-V]
                         [entries ...]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
@@ -446,7 +447,6 @@ optional arguments:
   --preview-size PREVIEW_SIZE
                         maximum height of the preview window in fractions of
                         the terminal height (default: "0.25")
-  -V, --version         print the version number and exit
   --search-highlight-style SEARCH_HIGHLIGHT_STYLE
                         style of matched search patterns (default:
                         "fg_black,bg_yellow,bold")
@@ -459,6 +459,8 @@ optional arguments:
   --shortcut-parentheses-highlight-style SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE
                         style of parentheses enclosing shortcut keys (default:
                         "fg_gray")
+  --show-multi-select-hint
+                        show a multi-select hint in the status bar
   --show-search-hint    show a search hint in the search line
   --show-shortcut-hints
                         show shortcut hints in the status bar
@@ -471,13 +473,12 @@ optional arguments:
   --status-bar-style STATUS_BAR_STYLE
                         style of the status bar lines (default:
                         "fg_yellow,bg_black")
-  --show-multi-select-hint
-                        show a multi-select hint in the status bar
   --stdout              Print the selected menu index or indices to stdout (in
                         addition to the exit status). Multiple indices are
                         separated by ";".
   -t TITLE, --title TITLE
                         menu title
+  -V, --version         print the version number and exit
 ```
 
 #### Example with preview option

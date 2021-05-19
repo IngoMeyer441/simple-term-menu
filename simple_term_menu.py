@@ -1494,9 +1494,6 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help='maximum height of the preview window in fractions of the terminal height (default: "%(default)s")',
     )
     parser.add_argument(
-        "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
-    )
-    parser.add_argument(
         "--search-highlight-style",
         action="store",
         dest="search_highlight_style",
@@ -1526,6 +1523,12 @@ def get_argumentparser() -> argparse.ArgumentParser:
         dest="shortcut_parentheses_highlight_style",
         default=",".join(DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE),
         help='style of parentheses enclosing shortcut keys (default: "%(default)s")',
+    )
+    parser.add_argument(
+        "--show-multi-select-hint",
+        action="store_true",
+        dest="show_multi_select_hint",
+        help="show a multi-select hint in the status bar",
     )
     parser.add_argument(
         "--show-search-hint",
@@ -1568,12 +1571,6 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help='style of the status bar lines (default: "%(default)s")',
     )
     parser.add_argument(
-        "--show-multi-select-hint",
-        action="store_true",
-        dest="show_multi_select_hint",
-        help="show a multi-select hint in the status bar",
-    )
-    parser.add_argument(
         "--stdout",
         action="store_true",
         dest="stdout",
@@ -1583,6 +1580,9 @@ def get_argumentparser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("-t", "--title", action="store", dest="title", help="menu title")
+    parser.add_argument(
+        "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
+    )
     parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
     return parser
 
