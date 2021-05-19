@@ -57,7 +57,7 @@ DEFAULT_MENU_HIGHLIGHT_STYLE = ("standout",)
 DEFAULT_MULTI_SELECT = False
 DEFAULT_MULTI_SELECT_CURSOR = "* "
 DEFAULT_MULTI_SELECT_CURSOR_STYLE = ("fg_green", "bold")
-DEFAULT_MULTI_SELECT_KEY = " "
+DEFAULT_MULTI_SELECT_KEYS = (" ", "tab")
 DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT = True
 DEFAULT_PREVIEW_BORDER = True
 DEFAULT_PREVIEW_SIZE = 0.25
@@ -283,7 +283,6 @@ class TerminalMenu:
                 for displayed_index, menu_index in enumerate(self._displayed_index_to_menu_index)
             }
             self._active_displayed_index = 0 if self._displayed_index_to_menu_index else None
-            self._selection.clear()
             self._viewport.search_lines_count = self._search.occupied_lines_count
             self._viewport.keep_visible(self._active_displayed_index)
 
@@ -339,6 +338,14 @@ class TerminalMenu:
         @property
         def active_displayed_index(self) -> Optional[int]:
             return self._active_displayed_index
+
+        @property
+        def displayed_selected_indices(self) -> List[int]:
+            return [
+                self._menu_index_to_displayed_index[selected_index]
+                for selected_index in self._selection
+                if selected_index in self._menu_index_to_displayed_index
+            ]
 
         def __iter__(self) -> Iterator[Tuple[int, int, str]]:
             for displayed_index, menu_index in enumerate(self._displayed_index_to_menu_index):
@@ -496,6 +503,7 @@ class TerminalMenu:
         "ctrl-k": "\013",
         "enter": "\015",
         "escape": "\033",
+        "tab": "\t",
     }
     _codenames = tuple(_codename_to_capname.keys())
     _codename_to_terminal_code = None  # type: Optional[Dict[str, str]]
@@ -517,7 +525,7 @@ class TerminalMenu:
         multi_select: bool = DEFAULT_MULTI_SELECT,
         multi_select_cursor: str = DEFAULT_MULTI_SELECT_CURSOR,
         multi_select_cursor_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_STYLE,
-        multi_select_key: str = DEFAULT_MULTI_SELECT_KEY,
+        multi_select_keys: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_KEYS,
         multi_select_select_on_accept: bool = DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT,
         preview_border: bool = DEFAULT_PREVIEW_BORDER,
         preview_command: Optional[Union[str, Callable[[str], str]]] = None,
@@ -598,7 +606,7 @@ class TerminalMenu:
         self._multi_select_cursor_style = (
             tuple(multi_select_cursor_style) if multi_select_cursor_style is not None else ()
         )
-        self._multi_select_key = multi_select_key
+        self._multi_select_keys = tuple(multi_select_keys) if multi_select_keys is not None else ()
         self._multi_select_select_on_accept = multi_select_select_on_accept
         self._preview_border = preview_border
         self._preview_command = preview_command
@@ -839,7 +847,10 @@ class TerminalMenu:
                         "(" + ", ".join("<" + accept_key + ">" for accept_key in self._accept_keys) + ")"
                     )
                 return "Press <{}> for multi-selection and {} to {}accept".format(
-                    string_to_key.get(self._multi_select_key, self._multi_select_key),
+                    ", ".join(
+                        string_to_key.get(multi_select_key, multi_select_key)
+                        for multi_select_key in self._multi_select_keys
+                    ),
                     accept_keys_string,
                     "select and " if self._multi_select_select_on_accept else "",
                 )
@@ -1161,12 +1172,13 @@ class TerminalMenu:
                 return
 
             max_cursor_width = max(wcswidth(self._menu_cursor), wcswidth(self._multi_select_cursor))
+            displayed_selected_indices = self._view.displayed_selected_indices
             for displayed_index in range(self._viewport.lower_index, self._viewport.upper_index + 1):
                 if displayed_index == self._view.active_displayed_index:
                     apply_style(self._menu_cursor_style)
                     self._tty_out.write(self._menu_cursor)
                     apply_style()
-                elif displayed_index in self._selection:
+                elif displayed_index in displayed_selected_indices:
                     apply_style(self._multi_select_cursor_style)
                     self._tty_out.write(self._multi_select_cursor)
                     apply_style()
@@ -1275,7 +1287,7 @@ class TerminalMenu:
                 "menu_up": set(("up", "ctrl-k", "k")),
                 "menu_down": set(("down", "ctrl-j", "j")),
                 "accept": set(self._accept_keys),
-                "multi_select": set((self._multi_select_key,)),
+                "multi_select": set(self._multi_select_keys),
                 "quit": set(("escape", "q")),
                 "search_start": set((self._search_key,)),
                 "backspace": set(("backspace",)),
@@ -1469,10 +1481,10 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help='style for the multi-select menu cursor as comma separated list (default: "%(default)s")',
     )
     parser.add_argument(
-        "--multi-select-key",
+        "--multi-select-keys",
         action="store",
-        dest="multi_select_key",
-        default=DEFAULT_MULTI_SELECT_KEY,
+        dest="multi_select_keys",
+        default=",".join(DEFAULT_MULTI_SELECT_KEYS),
         help=('key for toggling a selected item in a multi-selection (default: "%(default)s", '),
     )
     parser.add_argument(
@@ -1643,6 +1655,10 @@ def parse_arguments() -> AttributeDict:
         args.multi_select_cursor_style = tuple(args.multi_select_cursor_style.split(","))
     else:
         args.multi_select_cursor_style = None
+    if args.multi_select_keys != "":
+        args.multi_select_keys = tuple(args.multi_select_keys.split(","))
+    else:
+        args.multi_select_keys = None
     if args.search_key.lower() == "none":
         args.search_key = None
     if args.show_shortcut_hints_in_status_bar:
@@ -1677,7 +1693,7 @@ def main() -> None:
             multi_select=args.multi_select,
             multi_select_cursor=args.multi_select_cursor,
             multi_select_cursor_style=args.multi_select_cursor_style,
-            multi_select_key=args.multi_select_key,
+            multi_select_keys=args.multi_select_keys,
             multi_select_select_on_accept=args.multi_select_select_on_accept,
             preview_border=args.preview_border,
             preview_command=args.preview_command,

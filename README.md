@@ -7,7 +7,9 @@ different options to the user. Menu entries can be selected with the arrow or j/
 database to detect terminal features automatically and disables styles that are not available.
 Currently, Linux and macOS are supported.
 
-## Breaking changes from version 0.x to 1.x
+## Breaking changes
+
+### From version 0.x to 1.x
 
 If you update from version 0.x to 1.x, please consider these breaking changes:
 
@@ -17,6 +19,11 @@ If you update from version 0.x to 1.x, please consider these breaking changes:
 
 - The command line interface was revised. It now uses `-` instead of `_` to separate words consistently and rearranges
   short options. Only the most important short options were kept to save free letters for future releases.
+
+### From version 1.1 to 1.2
+
+- The `multi_select_key` parameter is now named `multi_select_keys` and takes an iterable of keys and by default `space`
+  and`tab` are now used as multi-select keys. This allows to toggle selected items in search mode.
 
 ## Installation
 
@@ -213,11 +220,11 @@ Pass `multi_select=True` to the `TerminalMenu` constructor to enable the multi-s
 arbitrary menu item to add it to your selection. Press `enter` (or any other configured `accept_key`) to add the
 currently selected entry as the last item to the selection and to return from the `show` method as usual. In
 multi-select mode, the `show` method returns a sorted tuple of all your selected menu indices instead of a single int.
-Use the `chosen_menu_entries` property to get a tuple of the menu entry strings instead. By setting `multi_select_key`
-you can define another key to toggle a selected item. By passing `show_multi_select_hint=True` a multi-select mode hint
-is shown in the status bar. If you don't want the `accept_key` to also select the last highlighted item you can pass
-`multi_select_select_on_accept=False` (if no menu item is explicitly selected, the last highlighted menu item will still
-be added to the selection).
+Use the `chosen_menu_entries` property to get a tuple of the menu entry strings instead. By setting `multi_select_keys`
+you can define another set of keys to toggle a selected item. By passing `show_multi_select_hint=True` a multi-select
+mode hint is shown in the status bar. If you don't want the `accept_key` to also select the last highlighted item you
+can pass `multi_select_select_on_accept=False` (if no menu item is explicitly selected, the last highlighted menu item
+will still be added to the selection).
 
 #### Multi-select example
 
@@ -391,7 +398,7 @@ usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [-E] [--highlight-style HIGHLIGHT_STYLE] [-m]
                         [--multi-select-cursor MULTI_SELECT_CURSOR]
                         [--multi-select-cursor-style MULTI_SELECT_CURSOR_STYLE]
-                        [--multi-select-key MULTI_SELECT_KEY]
+                        [--multi-select-keys MULTI_SELECT_KEYS]
                         [--multi-select-no-select-on-accept]
                         [-p PREVIEW_COMMAND] [--no-preview-border]
                         [--preview-size PREVIEW_SIZE]
@@ -437,9 +444,9 @@ optional arguments:
   --multi-select-cursor-style MULTI_SELECT_CURSOR_STYLE
                         style for the multi-select menu cursor as comma
                         separated list (default: "fg_green,bold")
-  --multi-select-key MULTI_SELECT_KEY
+  --multi-select-keys MULTI_SELECT_KEYS
                         key for toggling a selected item in a multi-selection
-                        (default: " ",
+                        (default: " ,tab",
   --multi-select-no-select-on-accept
                         do not select the currently highlighted menu item when
                         the accept key is pressed (it is still selected if no
