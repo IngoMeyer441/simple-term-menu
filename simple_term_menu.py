@@ -65,8 +65,8 @@ DEFAULT_PREVIEW_TITLE = "preview"
 DEFAULT_SEARCH_CASE_SENSITIVE = False
 DEFAULT_SEARCH_HIGHLIGHT_STYLE = ("fg_black", "bg_yellow", "bold")
 DEFAULT_SEARCH_KEY = "/"
+DEFAULT_SHORTCUT_BRACKETS_HIGHLIGHT_STYLE = ("fg_gray",)
 DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE = ("fg_blue",)
-DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE = ("fg_gray",)
 DEFAULT_SHOW_MULTI_SELECT_HINT = False
 DEFAULT_SHOW_SEARCH_HINT = False
 DEFAULT_SHOW_SHORTCUT_HINTS = False
@@ -536,8 +536,8 @@ class TerminalMenu:
         search_case_sensitive: bool = DEFAULT_SEARCH_CASE_SENSITIVE,
         search_highlight_style: Optional[Iterable[str]] = DEFAULT_SEARCH_HIGHLIGHT_STYLE,
         search_key: Optional[str] = DEFAULT_SEARCH_KEY,
+        shortcut_brackets_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_BRACKETS_HIGHLIGHT_STYLE,
         shortcut_key_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE,
-        shortcut_parentheses_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE,
         show_multi_select_hint: bool = DEFAULT_SHOW_MULTI_SELECT_HINT,
         show_search_hint: bool = DEFAULT_SHOW_SEARCH_HINT,
         show_shortcut_hints: bool = DEFAULT_SHOW_SHORTCUT_HINTS,
@@ -617,11 +617,11 @@ class TerminalMenu:
         self._search_case_sensitive = search_case_sensitive
         self._search_highlight_style = tuple(search_highlight_style) if search_highlight_style is not None else ()
         self._search_key = search_key
+        self._shortcut_brackets_highlight_style = (
+            tuple(shortcut_brackets_highlight_style) if shortcut_brackets_highlight_style is not None else ()
+        )
         self._shortcut_key_highlight_style = (
             tuple(shortcut_key_highlight_style) if shortcut_key_highlight_style is not None else ()
-        )
-        self._shortcut_parentheses_highlight_style = (
-            tuple(shortcut_parentheses_highlight_style) if shortcut_parentheses_highlight_style is not None else ()
         )
         self._show_search_hint = show_search_hint
         self._show_shortcut_hints = show_shortcut_hints
@@ -791,7 +791,7 @@ class TerminalMenu:
             self._menu_highlight_style,
             self._search_highlight_style,
             self._shortcut_key_highlight_style,
-            self._shortcut_parentheses_highlight_style,
+            self._shortcut_brackets_highlight_style,
             self._status_bar_style,
             self._multi_select_cursor_style,
         ):
@@ -907,11 +907,11 @@ class TerminalMenu:
                 self._tty_out.write(max_cursor_width * self._codename_to_terminal_code["cursor_right"])
                 if self._shortcuts_defined:
                     if current_shortcut_key is not None:
-                        apply_style(self._shortcut_parentheses_highlight_style)
+                        apply_style(self._shortcut_brackets_highlight_style)
                         self._tty_out.write("[")
                         apply_style(self._shortcut_key_highlight_style)
                         self._tty_out.write(current_shortcut_key)
-                        apply_style(self._shortcut_parentheses_highlight_style)
+                        apply_style(self._shortcut_brackets_highlight_style)
                         self._tty_out.write("]")
                         apply_style()
                     else:
@@ -1548,18 +1548,18 @@ def get_argumentparser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--shortcut-brackets-highlight-style",
+        action="store",
+        dest="shortcut_brackets_highlight_style",
+        default=",".join(DEFAULT_SHORTCUT_BRACKETS_HIGHLIGHT_STYLE),
+        help='style of brackets enclosing shortcut keys (default: "%(default)s")',
+    )
+    parser.add_argument(
         "--shortcut-key-highlight-style",
         action="store",
         dest="shortcut_key_highlight_style",
         default=",".join(DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE),
         help='style of shortcut keys (default: "%(default)s")',
-    )
-    parser.add_argument(
-        "--shortcut-parentheses-highlight-style",
-        action="store",
-        dest="shortcut_parentheses_highlight_style",
-        default=",".join(DEFAULT_SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE),
-        help='style of parentheses enclosing shortcut keys (default: "%(default)s")',
     )
     parser.add_argument(
         "--show-multi-select-hint",
@@ -1645,10 +1645,10 @@ def parse_arguments() -> AttributeDict:
         args.shortcut_key_highlight_style = tuple(args.shortcut_key_highlight_style.split(","))
     else:
         args.shortcut_key_highlight_style = None
-    if args.shortcut_parentheses_highlight_style != "":
-        args.shortcut_parentheses_highlight_style = tuple(args.shortcut_parentheses_highlight_style.split(","))
+    if args.shortcut_brackets_highlight_style != "":
+        args.shortcut_brackets_highlight_style = tuple(args.shortcut_brackets_highlight_style.split(","))
     else:
-        args.shortcut_parentheses_highlight_style = None
+        args.shortcut_brackets_highlight_style = None
     if args.status_bar_style != "":
         args.status_bar_style = tuple(args.status_bar_style.split(","))
     else:
@@ -1704,8 +1704,8 @@ def main() -> None:
             search_case_sensitive=args.case_sensitive,
             search_highlight_style=args.search_highlight_style,
             search_key=args.search_key,
+            shortcut_brackets_highlight_style=args.shortcut_brackets_highlight_style,
             shortcut_key_highlight_style=args.shortcut_key_highlight_style,
-            shortcut_parentheses_highlight_style=args.shortcut_parentheses_highlight_style,
             show_multi_select_hint=args.show_multi_select_hint,
             show_search_hint=args.show_search_hint,
             show_shortcut_hints=args.show_shortcut_hints,

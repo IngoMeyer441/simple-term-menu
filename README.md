@@ -25,6 +25,9 @@ If you update from version 0.x to 1.x, please consider these breaking changes:
 - The `multi_select_key` parameter is now named `multi_select_keys` and takes an iterable of keys and by default `space`
   and`tab` are now used as multi-select keys. This allows to toggle selected items in search mode.
 
+- The `shortcut_parentheses_highlight_style` parameter is renamed to `shortcut_brackets_highlight_style` to be more
+  consistent with the new `multi_select_cursor_brackets_style` parameter.
+
 ## Installation
 
 `simple-term-menu` is available on PyPI for Python 3.5+ and can be installed with `pip`:
@@ -117,7 +120,7 @@ You can alter the following styles:
 
 - `shortcut_key_highlight_style`: The style of shortcut keys. The default style is `("fg_blue",)`.
 
-- `shortcut_parentheses_highlight_style`: The style of parentheses enclosing shortcut keys. The default style is
+- `shortcut_brackets_highlight_style`: The style of brackets enclosing shortcut keys. The default style is
   `("fg_gray",)`.
 
 - `status_bar_style`: The style of the status bar below the menu. The default style is `("fg_yellow", "bg_black")`.
@@ -150,8 +153,8 @@ Pass `show_search_hint=True` to the `TerminalMenu` constructor to activate a sea
 ### Shortcuts
 
 You can define shortcuts for selected menu entries by prepending a single character enclosed in square brackets (like
-`[a]`). Pass `shortcut_key_highlight_style` and/or `shortcut_parentheses_highlight_style` to the `TerminalMenu`
-constructor to change the default highlight style of the shortcuts.
+`[a]`). Pass `shortcut_key_highlight_style` and/or `shortcut_brackets_highlight_style` to the `TerminalMenu` constructor
+to change the default highlight style of the shortcuts.
 
 By default, the `show` method returns when a shortcut key is pressed. If you only want the selection to jump the
 shortcut target, pass `exit_on_shortcut=False` to the `TerminalMenu` constructor.
@@ -405,8 +408,8 @@ usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [--preview-title PREVIEW_TITLE]
                         [--search-highlight-style SEARCH_HIGHLIGHT_STYLE]
                         [--search-key SEARCH_KEY]
+                        [--shortcut-brackets-highlight-style SHORTCUT_BRACKETS_HIGHLIGHT_STYLE]
                         [--shortcut-key-highlight-style SHORTCUT_KEY_HIGHLIGHT_STYLE]
-                        [--shortcut-parentheses-highlight-style SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE]
                         [--show-multi-select-hint] [--show-search-hint]
                         [--show-shortcut-hints]
                         [--show-shortcut-hints-in-title] [-b STATUS_BAR] [-d]
@@ -469,11 +472,11 @@ optional arguments:
                         key to start a search (default: "/", "none" is treated
                         a special value which activates the search on any
                         letter key)
+  --shortcut-brackets-highlight-style SHORTCUT_BRACKETS_HIGHLIGHT_STYLE
+                        style of brackets enclosing shortcut keys (default:
+                        "fg_gray")
   --shortcut-key-highlight-style SHORTCUT_KEY_HIGHLIGHT_STYLE
                         style of shortcut keys (default: "fg_blue")
-  --shortcut-parentheses-highlight-style SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE
-                        style of parentheses enclosing shortcut keys (default:
-                        "fg_gray")
   --show-multi-select-hint
                         show a multi-select hint in the status bar
   --show-search-hint    show a search hint in the search line
