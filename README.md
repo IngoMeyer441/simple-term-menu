@@ -126,10 +126,13 @@ You can alter the following styles:
 - `status_bar_style`: The style of the status bar below the menu. The default style is `("fg_yellow", "bg_black")`.
 
 - `multi_select_cursor_style`: The style of the cursor which pins a selected entry in a multi-selection. The default
-  style is `("bold",)`.
+  style is `("fg_yellow", "bold")`. This style excludes brackets (see below).
+
+- `multi_select_cursor_brackets_style`: The style of brackets in the `multi_select_cursor` (`([{<)]}>`). The default
+  style is `("fg_gray",)`.
 
 By setting `menu_cursor` you can define another cursor or disable it (`None`). The default cursor is `"> "`.
-The parameter `multi_select_cursor` customizes the multi-select cursor (the default is also `"> "`).
+The parameter `multi_select_cursor` customizes the multi-select cursor (the default is `"[*] "`).
 
 ### Searching
 
@@ -219,7 +222,7 @@ if __name__ == "__main__":
 
 ### Multi-select
 
-Pass `multi_select=True` to the `TerminalMenu` constructor to enable the multi-select mode. Press ``space`` on an
+Pass `multi_select=True` to the `TerminalMenu` constructor to enable the multi-select mode. Press `space` or `tab` on an
 arbitrary menu item to add it to your selection. Press `enter` (or any other configured `accept_key`) to add the
 currently selected entry as the last item to the selection and to return from the `show` method as usual. In
 multi-select mode, the `show` method returns a sorted tuple of all your selected menu indices instead of a single int.
@@ -400,6 +403,7 @@ usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [-i CURSOR_INDEX] [--cursor-style CURSOR_STYLE] [-C]
                         [-E] [--highlight-style HIGHLIGHT_STYLE] [-m]
                         [--multi-select-cursor MULTI_SELECT_CURSOR]
+                        [--multi-select-cursor-brackets-style MULTI_SELECT_CURSOR_BRACKETS_STYLE]
                         [--multi-select-cursor-style MULTI_SELECT_CURSOR_STYLE]
                         [--multi-select-keys MULTI_SELECT_KEYS]
                         [--multi-select-no-select-on-accept]
@@ -443,10 +447,13 @@ optional arguments:
   -m, --multi-select    Allow the selection of multiple entries (implies
                         `--stdout`)
   --multi-select-cursor MULTI_SELECT_CURSOR
-                        multi-select menu cursor (default: "* ")
+                        multi-select menu cursor (default: "[*] ")
+  --multi-select-cursor-brackets-style MULTI_SELECT_CURSOR_BRACKETS_STYLE
+                        style for brackets of the multi-select menu cursor as
+                        comma separated list (default: "fg_gray")
   --multi-select-cursor-style MULTI_SELECT_CURSOR_STYLE
                         style for the multi-select menu cursor as comma
-                        separated list (default: "fg_green,bold")
+                        separated list (default: "fg_yellow,bold")
   --multi-select-keys MULTI_SELECT_KEYS
                         key for toggling a selected item in a multi-selection
                         (default: " ,tab",

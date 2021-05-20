@@ -55,8 +55,9 @@ DEFAULT_MENU_CURSOR = "> "
 DEFAULT_MENU_CURSOR_STYLE = ("fg_red", "bold")
 DEFAULT_MENU_HIGHLIGHT_STYLE = ("standout",)
 DEFAULT_MULTI_SELECT = False
-DEFAULT_MULTI_SELECT_CURSOR = "* "
-DEFAULT_MULTI_SELECT_CURSOR_STYLE = ("fg_green", "bold")
+DEFAULT_MULTI_SELECT_CURSOR = "[*] "
+DEFAULT_MULTI_SELECT_CURSOR_BRACKETS_STYLE = ("fg_gray",)
+DEFAULT_MULTI_SELECT_CURSOR_STYLE = ("fg_yellow", "bold")
 DEFAULT_MULTI_SELECT_KEYS = (" ", "tab")
 DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT = True
 DEFAULT_PREVIEW_BORDER = True
@@ -526,6 +527,7 @@ class TerminalMenu:
         menu_highlight_style: Optional[Iterable[str]] = DEFAULT_MENU_HIGHLIGHT_STYLE,
         multi_select: bool = DEFAULT_MULTI_SELECT,
         multi_select_cursor: str = DEFAULT_MULTI_SELECT_CURSOR,
+        multi_select_cursor_brackets_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_BRACKETS_STYLE,
         multi_select_cursor_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_STYLE,
         multi_select_keys: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_KEYS,
         multi_select_select_on_accept: bool = DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT,
@@ -605,6 +607,9 @@ class TerminalMenu:
         self._menu_highlight_style = tuple(menu_highlight_style) if menu_highlight_style is not None else ()
         self._multi_select = multi_select
         self._multi_select_cursor = multi_select_cursor
+        self._multi_select_cursor_brackets_style = (
+            tuple(multi_select_cursor_brackets_style) if multi_select_cursor_brackets_style is not None else ()
+        )
         self._multi_select_cursor_style = (
             tuple(multi_select_cursor_style) if multi_select_cursor_style is not None else ()
         )
@@ -793,6 +798,7 @@ class TerminalMenu:
             self._shortcut_key_highlight_style,
             self._shortcut_brackets_highlight_style,
             self._status_bar_style,
+            self._multi_select_cursor_brackets_style,
             self._multi_select_cursor_style,
         ):
             for style in style_tuple:
@@ -873,21 +879,25 @@ class TerminalMenu:
                 status_bar_lines += (get_multi_select_hint(),)
             return status_bar_lines
 
-        def apply_style(style_iterable: Optional[Iterable[str]] = None, reset: bool = True) -> None:
+        def apply_style(
+            style_iterable: Optional[Iterable[str]] = None, reset: bool = True, file: Optional[TextIO] = None
+        ) -> None:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
             assert self._tty_out is not None
+            if file is None:
+                file = self._tty_out
             if reset or style_iterable is None:
-                self._tty_out.write(self._codename_to_terminal_code["reset_attributes"])
+                file.write(self._codename_to_terminal_code["reset_attributes"])
             if style_iterable is not None:
                 for style in style_iterable:
-                    self._tty_out.write(self._codename_to_terminal_code[style])
+                    file.write(self._codename_to_terminal_code[style])
 
         def print_menu_entries() -> int:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
             assert self._tty_out is not None
-            max_cursor_width = max(wcswidth(self._menu_cursor), wcswidth(self._multi_select_cursor))
+            all_cursors_width = wcswidth(self._menu_cursor) + wcswidth(self._multi_select_cursor)
             current_menu_block_displayed_height = 0  # sum all written lines
             num_cols = self._num_cols()
             if self._title_lines:
@@ -904,7 +914,7 @@ class TerminalMenu:
             displayed_index = -1
             for displayed_index, menu_index, menu_entry in self._view:
                 current_shortcut_key = self._shortcut_keys[menu_index]
-                self._tty_out.write(max_cursor_width * self._codename_to_terminal_code["cursor_right"])
+                self._tty_out.write(all_cursors_width * self._codename_to_terminal_code["cursor_right"])
                 if self._shortcuts_defined:
                     if current_shortcut_key is not None:
                         apply_style(self._shortcut_brackets_highlight_style)
@@ -922,23 +932,25 @@ class TerminalMenu:
                 if self._search and self._search.search_text != "":
                     match_obj = self._search.matches[displayed_index][1]
                     self._tty_out.write(
-                        menu_entry[: min(match_obj.start(), num_cols - max_cursor_width - shortcut_string_len)]
+                        menu_entry[: min(match_obj.start(), num_cols - all_cursors_width - shortcut_string_len)]
                     )
                     apply_style(self._search_highlight_style)
                     self._tty_out.write(
                         menu_entry[
-                            match_obj.start() : min(match_obj.end(), num_cols - max_cursor_width - shortcut_string_len)
+                            match_obj.start() : min(match_obj.end(), num_cols - all_cursors_width - shortcut_string_len)
                         ]
                     )
                     apply_style()
                     if menu_index == self._view.active_menu_index:
                         apply_style(self._menu_highlight_style)
-                    self._tty_out.write(menu_entry[match_obj.end() : num_cols - max_cursor_width - shortcut_string_len])
+                    self._tty_out.write(
+                        menu_entry[match_obj.end() : num_cols - all_cursors_width - shortcut_string_len]
+                    )
                 else:
-                    self._tty_out.write(menu_entry[: num_cols - max_cursor_width - shortcut_string_len])
+                    self._tty_out.write(menu_entry[: num_cols - all_cursors_width - shortcut_string_len])
                 if menu_index == self._view.active_menu_index:
                     apply_style()
-                self._tty_out.write((num_cols - wcswidth(menu_entry) - max_cursor_width - shortcut_string_len) * " ")
+                self._tty_out.write((num_cols - wcswidth(menu_entry) - all_cursors_width - shortcut_string_len) * " ")
                 if displayed_index < self._viewport.upper_index:
                     self._tty_out.write("\n")
             empty_menu_lines = self._viewport.upper_index - displayed_index
@@ -1173,22 +1185,71 @@ class TerminalMenu:
             if self._view.active_displayed_index is None:
                 return
 
-            max_cursor_width = max(wcswidth(self._menu_cursor), wcswidth(self._multi_select_cursor))
-            displayed_selected_indices = self._view.displayed_selected_indices
+            cursor_width = wcswidth(self._menu_cursor)
             for displayed_index in range(self._viewport.lower_index, self._viewport.upper_index + 1):
                 if displayed_index == self._view.active_displayed_index:
                     apply_style(self._menu_cursor_style)
                     self._tty_out.write(self._menu_cursor)
                     apply_style()
-                elif displayed_index in displayed_selected_indices:
-                    apply_style(self._multi_select_cursor_style)
-                    self._tty_out.write(self._multi_select_cursor)
-                    apply_style()
                 else:
-                    self._tty_out.write(max_cursor_width * " ")
+                    self._tty_out.write(cursor_width * " ")
                 self._tty_out.write("\r")
                 if displayed_index < self._viewport.upper_index:
                     self._tty_out.write(self._codename_to_terminal_code["cursor_down"])
+            self._tty_out.write((self._viewport.size - 1) * self._codename_to_terminal_code["cursor_up"])
+
+        def print_multi_select_column() -> None:
+            # pylint: disable=unsubscriptable-object
+            assert self._codename_to_terminal_code is not None
+            assert self._tty_out is not None
+            if not self._multi_select:
+                return
+
+            def prepare_multi_select_cursors() -> Tuple[str, str]:
+                bracket_characters = "([{<)]}>"
+                bracket_style_escape_codes_io = io.StringIO()
+                multi_select_cursor_style_escape_codes_io = io.StringIO()
+                reset_codes_io = io.StringIO()
+                apply_style(self._multi_select_cursor_brackets_style, file=bracket_style_escape_codes_io)
+                apply_style(self._multi_select_cursor_style, file=multi_select_cursor_style_escape_codes_io)
+                apply_style(file=reset_codes_io)
+                bracket_style_escape_codes = bracket_style_escape_codes_io.getvalue()
+                multi_select_cursor_style_escape_codes = multi_select_cursor_style_escape_codes_io.getvalue()
+                reset_codes = reset_codes_io.getvalue()
+
+                cursor_with_brackets_only = re.sub(
+                    r"[^{}]".format(re.escape(bracket_characters)), " ", self._multi_select_cursor
+                )
+                cursor_with_brackets_only_styled = re.sub(
+                    r"[{}]+".format(re.escape(bracket_characters)),
+                    lambda match_obj: bracket_style_escape_codes + match_obj.group(0) + reset_codes,
+                    cursor_with_brackets_only,
+                )
+                cursor_styled = re.sub(
+                    r"[{brackets}]+|[^{brackets}\s]+".format(brackets=re.escape(bracket_characters)),
+                    lambda match_obj: (
+                        bracket_style_escape_codes
+                        if match_obj.group(0)[0] in bracket_characters
+                        else multi_select_cursor_style_escape_codes
+                    )
+                    + match_obj.group(0)
+                    + reset_codes,
+                    self._multi_select_cursor,
+                )
+                return cursor_styled, cursor_with_brackets_only_styled
+
+            checked_multi_select_cursor, unchecked_multi_select_cursor = prepare_multi_select_cursors()
+            cursor_width = wcswidth(self._menu_cursor)
+            displayed_selected_indices = self._view.displayed_selected_indices
+            for displayed_index in range(self._viewport.lower_index, self._viewport.upper_index + 1):
+                self._tty_out.write("\r" + cursor_width * self._codename_to_terminal_code["cursor_right"])
+                if displayed_index in displayed_selected_indices:
+                    self._tty_out.write(checked_multi_select_cursor)
+                else:
+                    self._tty_out.write(unchecked_multi_select_cursor)
+                if displayed_index < self._viewport.upper_index:
+                    self._tty_out.write(self._codename_to_terminal_code["cursor_down"])
+            self._tty_out.write("\r")
             self._tty_out.write((self._viewport.size - 1) * self._codename_to_terminal_code["cursor_up"])
 
         # pylint: disable=unsubscriptable-object
@@ -1211,6 +1272,8 @@ class TerminalMenu:
             displayed_menu_height += print_status_bar(displayed_menu_height, status_bar_lines)
         delete_old_menu_lines(displayed_menu_height)
         position_cursor()
+        if self._multi_select:
+            print_multi_select_column()
         self._previous_displayed_menu_height = displayed_menu_height
         self._tty_out.flush()
 
@@ -1476,6 +1539,13 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help='multi-select menu cursor (default: "%(default)s")',
     )
     parser.add_argument(
+        "--multi-select-cursor-brackets-style",
+        action="store",
+        dest="multi_select_cursor_brackets_style",
+        default=",".join(DEFAULT_MULTI_SELECT_CURSOR_BRACKETS_STYLE),
+        help='style for brackets of the multi-select menu cursor as comma separated list (default: "%(default)s")',
+    )
+    parser.add_argument(
         "--multi-select-cursor-style",
         action="store",
         dest="multi_select_cursor_style",
@@ -1653,6 +1723,10 @@ def parse_arguments() -> AttributeDict:
         args.status_bar_style = tuple(args.status_bar_style.split(","))
     else:
         args.status_bar_style = None
+    if args.multi_select_cursor_brackets_style != "":
+        args.multi_select_cursor_brackets_style = tuple(args.multi_select_cursor_brackets_style.split(","))
+    else:
+        args.multi_select_cursor_brackets_style = None
     if args.multi_select_cursor_style != "":
         args.multi_select_cursor_style = tuple(args.multi_select_cursor_style.split(","))
     else:
@@ -1694,6 +1768,7 @@ def main() -> None:
             menu_highlight_style=args.highlight_style,
             multi_select=args.multi_select,
             multi_select_cursor=args.multi_select_cursor,
+            multi_select_cursor_brackets_style=args.multi_select_cursor_brackets_style,
             multi_select_cursor_style=args.multi_select_cursor_style,
             multi_select_keys=args.multi_select_keys,
             multi_select_select_on_accept=args.multi_select_select_on_accept,
