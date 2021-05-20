@@ -477,6 +477,8 @@ class TerminalMenu:
         "colors": "colors",
         "cursor_down": "cud1",
         "cursor_invisible": "civis",
+        "cursor_left": "cub1",
+        "cursor_right": "cuf1",
         "cursor_up": "cuu1",
         "cursor_visible": "cnorm",
         "delete_line": "dl1",
@@ -902,7 +904,7 @@ class TerminalMenu:
             displayed_index = -1
             for displayed_index, menu_index, menu_entry in self._view:
                 current_shortcut_key = self._shortcut_keys[menu_index]
-                self._tty_out.write(max_cursor_width * " ")
+                self._tty_out.write(max_cursor_width * self._codename_to_terminal_code["cursor_right"])
                 if self._shortcuts_defined:
                     if current_shortcut_key is not None:
                         apply_style(self._shortcut_parentheses_highlight_style)
