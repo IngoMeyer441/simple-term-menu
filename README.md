@@ -379,6 +379,16 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
 
   ![screenshot_preview_tmux_sessions](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/preview_tmux_sessions.png)
 
+### Localization / Text modification
+
+Use the constructor parameters
+
+- `show_search_hint_text` and
+- `show_multi_select_hint_text`
+
+to modify the corresponding texts. Use the placeholder `{key}` for the search key in `show_search_hint_text` and both
+`{accept_keys}` and `{multi_select_keys}` in `show_multi_select_hint_text` if appropriately.
+
 ### Additional settings
 
 Furthermore, the `TerminalMenu` constructor takes these additional parameters to change the menu behavior:
@@ -414,7 +424,10 @@ usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [--search-key SEARCH_KEY]
                         [--shortcut-brackets-highlight-style SHORTCUT_BRACKETS_HIGHLIGHT_STYLE]
                         [--shortcut-key-highlight-style SHORTCUT_KEY_HIGHLIGHT_STYLE]
-                        [--show-multi-select-hint] [--show-search-hint]
+                        [--show-multi-select-hint]
+                        [--show-multi-select-hint-text SHOW_MULTI_SELECT_HINT_TEXT]
+                        [--show-search-hint]
+                        [--show-search-hint-text SHOW_SEARCH_HINT_TEXT]
                         [--show-shortcut-hints]
                         [--show-shortcut-hints-in-title] [-b STATUS_BAR] [-d]
                         [--status-bar-style STATUS_BAR_STYLE] [--stdout]
@@ -486,7 +499,15 @@ optional arguments:
                         style of shortcut keys (default: "fg_blue")
   --show-multi-select-hint
                         show a multi-select hint in the status bar
+  --show-multi-select-hint-text SHOW_MULTI_SELECT_HINT_TEXT
+                        Custom text which will be shown as multi-select hint.
+                        Use the placeholders {multi_select_keys} and
+                        {accept_keys} if appropriately.
   --show-search-hint    show a search hint in the search line
+  --show-search-hint-text SHOW_SEARCH_HINT_TEXT
+                        Custom text which will be shown as search hint. Use
+                        the placeholders {key} for the search key if
+                        appropriately.
   --show-shortcut-hints
                         show shortcut hints in the status bar
   --show-shortcut-hints-in-title

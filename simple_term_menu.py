@@ -25,6 +25,7 @@ from typing import (
     Match,
     Optional,
     Pattern,
+    Sequence,
     Set,
     TextIO,
     Tuple,
@@ -541,7 +542,9 @@ class TerminalMenu:
         shortcut_brackets_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_BRACKETS_HIGHLIGHT_STYLE,
         shortcut_key_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE,
         show_multi_select_hint: bool = DEFAULT_SHOW_MULTI_SELECT_HINT,
+        show_multi_select_hint_text: Optional[str] = None,
         show_search_hint: bool = DEFAULT_SHOW_SEARCH_HINT,
+        show_search_hint_text: Optional[str] = None,
         show_shortcut_hints: bool = DEFAULT_SHOW_SHORTCUT_HINTS,
         show_shortcut_hints_in_status_bar: bool = DEFAULT_SHOW_SHORTCUT_HINTS_IN_STATUS_BAR,
         status_bar: Optional[Union[str, Iterable[str], Callable[[str], str]]] = None,
@@ -629,6 +632,7 @@ class TerminalMenu:
             tuple(shortcut_key_highlight_style) if shortcut_key_highlight_style is not None else ()
         )
         self._show_search_hint = show_search_hint
+        self._show_search_hint_text = show_search_hint_text
         self._show_shortcut_hints = show_shortcut_hints
         self._show_shortcut_hints_in_status_bar = show_shortcut_hints_in_status_bar
         self._status_bar_func = None  # type: Optional[Callable[[str], str]]
@@ -653,6 +657,7 @@ class TerminalMenu:
             True,
         )
         self._show_multi_select_hint = show_multi_select_hint
+        self._show_multi_select_hint_text = show_multi_select_hint_text
         self._chosen_accept_key = None  # type: Optional[str]
         self._chosen_menu_index = None  # type: Optional[int]
         self._chosen_menu_indices = None  # type: Optional[Tuple[int, ...]]
@@ -844,24 +849,28 @@ class TerminalMenu:
 
     def _paint_menu(self) -> None:
         def get_status_bar_lines() -> Tuple[str, ...]:
-            def get_multi_select_hint():
-                string_to_key = {
-                    " ": "space",
-                }
-                if len(self._accept_keys) == 1:
-                    accept_keys_string = "<" + self._accept_keys[0] + ">"
-                else:
-                    accept_keys_string = (
-                        "(" + ", ".join("<" + accept_key + ">" for accept_key in self._accept_keys) + ")"
+            def get_multi_select_hint() -> str:
+                def get_string_from_keys(keys: Sequence[str]) -> str:
+                    string_to_key = {
+                        " ": "space",
+                    }
+                    keys_string = ", ".join(
+                        "<" + string_to_key.get(accept_key, accept_key) + ">" for accept_key in keys
                     )
-                return "Press <{}> for multi-selection and {} to {}accept".format(
-                    ", ".join(
-                        string_to_key.get(multi_select_key, multi_select_key)
-                        for multi_select_key in self._multi_select_keys
-                    ),
-                    accept_keys_string,
-                    "select and " if self._multi_select_select_on_accept else "",
-                )
+                    return keys_string
+
+                accept_keys_string = get_string_from_keys(self._accept_keys)
+                multi_select_keys_string = get_string_from_keys(self._multi_select_keys)
+                if self._show_multi_select_hint_text is not None:
+                    return self._show_multi_select_hint_text.format(
+                        multi_select_keys=multi_select_keys_string, accept_keys=accept_keys_string
+                    )
+                else:
+                    return "Press {} for multi-selection and {} to {}accept".format(
+                        multi_select_keys_string,
+                        accept_keys_string,
+                        "select and " if self._multi_select_select_on_accept else "",
+                    )
 
             if self._status_bar_func is not None and self._view.active_menu_index is not None:
                 status_bar_lines = tuple(
@@ -978,8 +987,10 @@ class TerminalMenu:
                 )
                 self._tty_out.write((num_cols - len(self._search) - 1) * " ")
             elif self._show_search_hint:
-                if self._search_key is not None:
-                    search_hint = '(Press "{}" to search)'.format(self._search_key)[:num_cols]
+                if self._show_search_hint_text is not None:
+                    search_hint = self._show_search_hint_text.format(key=self._search_key)[:num_cols]
+                elif self._search_key is not None:
+                    search_hint = '(Press "{key}" to search)'.format(key=self._search_key)[:num_cols]
                 else:
                     search_hint = "(Press any letter key to search)"[:num_cols]
                 self._tty_out.write(search_hint)
@@ -1638,10 +1649,28 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help="show a multi-select hint in the status bar",
     )
     parser.add_argument(
+        "--show-multi-select-hint-text",
+        action="store",
+        dest="show_multi_select_hint_text",
+        help=(
+            "Custom text which will be shown as multi-select hint. Use the placeholders {multi_select_keys} and "
+            "{accept_keys} if appropriately."
+        ),
+    )
+    parser.add_argument(
         "--show-search-hint",
         action="store_true",
         dest="show_search_hint",
         help="show a search hint in the search line",
+    )
+    parser.add_argument(
+        "--show-search-hint-text",
+        action="store",
+        dest="show_search_hint_text",
+        help=(
+            "Custom text which will be shown as search hint. Use the placeholders {key} for the search key "
+            "if appropriately."
+        ),
     )
     parser.add_argument(
         "--show-shortcut-hints",
@@ -1782,7 +1811,9 @@ def main() -> None:
             shortcut_brackets_highlight_style=args.shortcut_brackets_highlight_style,
             shortcut_key_highlight_style=args.shortcut_key_highlight_style,
             show_multi_select_hint=args.show_multi_select_hint,
+            show_multi_select_hint_text=args.show_multi_select_hint_text,
             show_search_hint=args.show_search_hint,
+            show_search_hint_text=args.show_search_hint_text,
             show_shortcut_hints=args.show_shortcut_hints,
             show_shortcut_hints_in_status_bar=args.show_shortcut_hints_in_status_bar,
             status_bar=args.status_bar,
