@@ -43,7 +43,7 @@ __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2021 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (1, 2, 0)
+__version_info__ = (1, 2, 1)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -912,7 +912,9 @@ class TerminalMenu:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
             assert self._tty_out is not None
-            all_cursors_width = wcswidth(self._menu_cursor) + wcswidth(self._multi_select_cursor)
+            all_cursors_width = wcswidth(self._menu_cursor) + (
+                wcswidth(self._multi_select_cursor) if self._multi_select else 0
+            )
             current_menu_block_displayed_height = 0  # sum all written lines
             num_cols = self._num_cols()
             if self._title_lines:
