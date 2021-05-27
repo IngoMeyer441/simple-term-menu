@@ -1,9 +1,10 @@
 import os
 import runpy
 import subprocess
-from setuptools import setup
 from distutils.cmd import Command
 from tempfile import TemporaryDirectory
+
+from setuptools import setup
 
 
 class PyinstallerCommand(Command):
