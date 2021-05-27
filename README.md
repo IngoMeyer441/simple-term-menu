@@ -7,7 +7,9 @@ different options to the user. Menu entries can be selected with the arrow or j/
 database to detect terminal features automatically and disables styles that are not available.
 Currently, Linux and macOS are supported.
 
-## Breaking changes from version 0.x to 1.x
+## Breaking changes
+
+### From version 0.x to 1.x
 
 If you update from version 0.x to 1.x, please consider these breaking changes:
 
@@ -17,6 +19,14 @@ If you update from version 0.x to 1.x, please consider these breaking changes:
 
 - The command line interface was revised. It now uses `-` instead of `_` to separate words consistently and rearranges
   short options. Only the most important short options were kept to save free letters for future releases.
+
+### From version 1.1 to 1.2
+
+- The `multi_select_key` parameter is now named `multi_select_keys` and takes an iterable of keys and by default `space`
+  and`tab` are now used as multi-select keys. This allows to toggle selected items in search mode.
+
+- The `shortcut_parentheses_highlight_style` parameter is renamed to `shortcut_brackets_highlight_style` to be more
+  consistent with the new `multi_select_cursor_brackets_style` parameter.
 
 ## Installation
 
@@ -110,16 +120,19 @@ You can alter the following styles:
 
 - `shortcut_key_highlight_style`: The style of shortcut keys. The default style is `("fg_blue",)`.
 
-- `shortcut_parentheses_highlight_style`: The style of parentheses enclosing shortcut keys. The default style is
+- `shortcut_brackets_highlight_style`: The style of brackets enclosing shortcut keys. The default style is
   `("fg_gray",)`.
 
 - `status_bar_style`: The style of the status bar below the menu. The default style is `("fg_yellow", "bg_black")`.
 
 - `multi_select_cursor_style`: The style of the cursor which pins a selected entry in a multi-selection. The default
-  style is `("bold",)`.
+  style is `("fg_yellow", "bold")`. This style excludes brackets (see below).
+
+- `multi_select_cursor_brackets_style`: The style of brackets in the `multi_select_cursor` (`([{<)]}>`). The default
+  style is `("fg_gray",)`.
 
 By setting `menu_cursor` you can define another cursor or disable it (`None`). The default cursor is `"> "`.
-The parameter `multi_select_cursor` customizes the multi-select cursor (the default is also `"> "`).
+The parameter `multi_select_cursor` customizes the multi-select cursor (the default is `"[*] "`).
 
 ### Searching
 
@@ -143,8 +156,8 @@ Pass `show_search_hint=True` to the `TerminalMenu` constructor to activate a sea
 ### Shortcuts
 
 You can define shortcuts for selected menu entries by prepending a single character enclosed in square brackets (like
-`[a]`). Pass `shortcut_key_highlight_style` and/or `shortcut_parentheses_highlight_style` to the `TerminalMenu`
-constructor to change the default highlight style of the shortcuts.
+`[a]`). Pass `shortcut_key_highlight_style` and/or `shortcut_brackets_highlight_style` to the `TerminalMenu` constructor
+to change the default highlight style of the shortcuts.
 
 By default, the `show` method returns when a shortcut key is pressed. If you only want the selection to jump the
 shortcut target, pass `exit_on_shortcut=False` to the `TerminalMenu` constructor.
@@ -209,15 +222,15 @@ if __name__ == "__main__":
 
 ### Multi-select
 
-Pass `multi_select=True` to the `TerminalMenu` constructor to enable the multi-select mode. Press ``space`` on an
+Pass `multi_select=True` to the `TerminalMenu` constructor to enable the multi-select mode. Press `space` or `tab` on an
 arbitrary menu item to add it to your selection. Press `enter` (or any other configured `accept_key`) to add the
 currently selected entry as the last item to the selection and to return from the `show` method as usual. In
 multi-select mode, the `show` method returns a sorted tuple of all your selected menu indices instead of a single int.
-Use the `chosen_menu_entries` property to get a tuple of the menu entry strings instead. By setting `multi_select_key`
-you can define another key to toggle a selected item. By passing `show_multi_select_hint=True` a multi-select mode hint
-is shown in the status bar. If you don't want the `accept_key` to also select the last highlighted item you can pass
-`multi_select_select_on_accept=False` (if no menu item is explicitly selected, the last highlighted menu item will still
-be added to the selection).
+Use the `chosen_menu_entries` property to get a tuple of the menu entry strings instead. By setting `multi_select_keys`
+you can define another set of keys to toggle a selected item. By passing `show_multi_select_hint=True` a multi-select
+mode hint is shown in the status bar. If you don't want the `accept_key` to also select the last highlighted item you
+can pass `multi_select_select_on_accept=False` (if no menu item is explicitly selected, the last highlighted menu item
+will still be added to the selection).
 
 #### Multi-select example
 
@@ -256,6 +269,9 @@ by `|`), it is passed instead to the preview command. `\|` can be used for a lit
 The additional keyword argument `preview_size` can be used to control the height of the preview window. It is given as
 fraction of the complete terminal height (default: `0.25`). The width cannot be set, it is always the complete width of
 the terminal window.
+
+Pass `preview_title` with a string of your choice to customize the preview window title (default: `"preview"`) or
+`preview_border=False` to deactivate the border around the preview window (also deactivates the title string).
 
 Preview commands are allowed to generate [ANSI escape color codes](https://en.wikipedia.org/wiki/ANSI_escape_code#SGR).
 
@@ -363,6 +379,16 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
 
   ![screenshot_preview_tmux_sessions](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/preview_tmux_sessions.png)
 
+### Localization / Text modification
+
+Use the constructor parameters
+
+- `show_search_hint_text` and
+- `show_multi_select_hint_text`
+
+to modify the corresponding texts. Use the placeholder `{key}` for the search key in `show_search_hint_text` and both
+`{accept_keys}` and `{multi_select_keys}` in `show_multi_select_hint_text` if appropriately.
+
 ### Additional settings
 
 Furthermore, the `TerminalMenu` constructor takes these additional parameters to change the menu behavior:
@@ -382,23 +408,30 @@ Furthermore, the `TerminalMenu` constructor takes these additional parameters to
 of the selected menu entry. The exit code 0 reports the cancel action. The following command line arguments are
 supported:
 
-```
+```text
 usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [-i CURSOR_INDEX] [--cursor-style CURSOR_STYLE] [-C]
                         [-E] [--highlight-style HIGHLIGHT_STYLE] [-m]
                         [--multi-select-cursor MULTI_SELECT_CURSOR]
+                        [--multi-select-cursor-brackets-style MULTI_SELECT_CURSOR_BRACKETS_STYLE]
                         [--multi-select-cursor-style MULTI_SELECT_CURSOR_STYLE]
-                        [--multi-select-key MULTI_SELECT_KEY]
+                        [--multi-select-keys MULTI_SELECT_KEYS]
                         [--multi-select-no-select-on-accept]
-                        [-p PREVIEW_COMMAND] [--preview-size PREVIEW_SIZE]
-                        [-V] [--search-highlight-style SEARCH_HIGHLIGHT_STYLE]
+                        [-p PREVIEW_COMMAND] [--no-preview-border]
+                        [--preview-size PREVIEW_SIZE]
+                        [--preview-title PREVIEW_TITLE]
+                        [--search-highlight-style SEARCH_HIGHLIGHT_STYLE]
                         [--search-key SEARCH_KEY]
+                        [--shortcut-brackets-highlight-style SHORTCUT_BRACKETS_HIGHLIGHT_STYLE]
                         [--shortcut-key-highlight-style SHORTCUT_KEY_HIGHLIGHT_STYLE]
-                        [--shortcut-parentheses-highlight-style SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE]
-                        [--show-search-hint] [--show-shortcut-hints]
+                        [--show-multi-select-hint]
+                        [--show-multi-select-hint-text SHOW_MULTI_SELECT_HINT_TEXT]
+                        [--show-search-hint]
+                        [--show-search-hint-text SHOW_SEARCH_HINT_TEXT]
+                        [--show-shortcut-hints]
                         [--show-shortcut-hints-in-title] [-b STATUS_BAR] [-d]
-                        [--status-bar-style STATUS_BAR_STYLE]
-                        [--show-multi-select-hint] [--stdout] [-t TITLE]
+                        [--status-bar-style STATUS_BAR_STYLE] [--stdout]
+                        [-t TITLE] [-V]
                         [entries ...]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
@@ -427,13 +460,16 @@ optional arguments:
   -m, --multi-select    Allow the selection of multiple entries (implies
                         `--stdout`)
   --multi-select-cursor MULTI_SELECT_CURSOR
-                        multi-select menu cursor (default: "* ")
+                        multi-select menu cursor (default: "[*] ")
+  --multi-select-cursor-brackets-style MULTI_SELECT_CURSOR_BRACKETS_STYLE
+                        style for brackets of the multi-select menu cursor as
+                        comma separated list (default: "fg_gray")
   --multi-select-cursor-style MULTI_SELECT_CURSOR_STYLE
                         style for the multi-select menu cursor as comma
-                        separated list (default: "fg_green,bold")
-  --multi-select-key MULTI_SELECT_KEY
+                        separated list (default: "fg_yellow,bold")
+  --multi-select-keys MULTI_SELECT_KEYS
                         key for toggling a selected item in a multi-selection
-                        (default: " ",
+                        (default: " ,tab",
   --multi-select-no-select-on-accept
                         do not select the currently highlighted menu item when
                         the accept key is pressed (it is still selected if no
@@ -443,10 +479,12 @@ optional arguments:
                         entry. "{}" can be used as placeholder for the menu
                         text. If the menu entry has a data component
                         (separated by "|"), this is used instead.
+  --no-preview-border   do not draw a border around the preview window
   --preview-size PREVIEW_SIZE
                         maximum height of the preview window in fractions of
                         the terminal height (default: "0.25")
-  -V, --version         print the version number and exit
+  --preview-title PREVIEW_TITLE
+                        title of the preview window (default: "preview")
   --search-highlight-style SEARCH_HIGHLIGHT_STYLE
                         style of matched search patterns (default:
                         "fg_black,bg_yellow,bold")
@@ -454,12 +492,22 @@ optional arguments:
                         key to start a search (default: "/", "none" is treated
                         a special value which activates the search on any
                         letter key)
+  --shortcut-brackets-highlight-style SHORTCUT_BRACKETS_HIGHLIGHT_STYLE
+                        style of brackets enclosing shortcut keys (default:
+                        "fg_gray")
   --shortcut-key-highlight-style SHORTCUT_KEY_HIGHLIGHT_STYLE
                         style of shortcut keys (default: "fg_blue")
-  --shortcut-parentheses-highlight-style SHORTCUT_PARENTHESES_HIGHLIGHT_STYLE
-                        style of parentheses enclosing shortcut keys (default:
-                        "fg_gray")
+  --show-multi-select-hint
+                        show a multi-select hint in the status bar
+  --show-multi-select-hint-text SHOW_MULTI_SELECT_HINT_TEXT
+                        Custom text which will be shown as multi-select hint.
+                        Use the placeholders {multi_select_keys} and
+                        {accept_keys} if appropriately.
   --show-search-hint    show a search hint in the search line
+  --show-search-hint-text SHOW_SEARCH_HINT_TEXT
+                        Custom text which will be shown as search hint. Use
+                        the placeholders {key} for the search key if
+                        appropriately.
   --show-shortcut-hints
                         show shortcut hints in the status bar
   --show-shortcut-hints-in-title
@@ -471,13 +519,12 @@ optional arguments:
   --status-bar-style STATUS_BAR_STYLE
                         style of the status bar lines (default:
                         "fg_yellow,bg_black")
-  --show-multi-select-hint
-                        show a multi-select hint in the status bar
   --stdout              Print the selected menu index or indices to stdout (in
                         addition to the exit status). Multiple indices are
                         separated by ";".
   -t TITLE, --title TITLE
                         menu title
+  -V, --version         print the version number and exit
 ```
 
 #### Example with preview option
@@ -576,3 +623,15 @@ if __name__ == "__main__":
 ## Similar projects
 
 - [`bullet`](https://github.com/Mckinsey666/bullet): Creates bullet-lists with multi-selection support.
+
+## Contributing
+
+Please open [an issue on GitHub](https://github.com/IngoMeyer441/simple-term-menu/issues/new) if you experience bugs or
+miss features. Please consider to send a pull request if you can spend time on fixing the issue yourself. This project
+uses [pre-commit](https://pre-commit.com) to ensure code quality and a consistent code style. Run
+
+```bash
+make git-hooks-install
+```
+
+to install all linters as Git hooks in your local clone of `simple-term-menu`.

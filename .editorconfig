@@ -21,3 +21,7 @@ trim_trailing_whitespace = true
 # Tab indentation for Makefiles
 [Makefile]
 indent_style = tab
+
+# 2 space indentation for YAML files
+[*.{yml,yaml}]
+indent_size = 2
