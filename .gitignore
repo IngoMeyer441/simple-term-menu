@@ -1,4 +1,9 @@
 .*
+!.editorconfig
+!.gitignore
+!.gitlab-ci.yml
+!.mdl_style.rb
+!.pre-commit-config.yaml
 *.pyc
 __pycache__/
 build/

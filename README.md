@@ -408,7 +408,7 @@ Furthermore, the `TerminalMenu` constructor takes these additional parameters to
 of the selected menu entry. The exit code 0 reports the cancel action. The following command line arguments are
 supported:
 
-```
+```text
 usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [-i CURSOR_INDEX] [--cursor-style CURSOR_STYLE] [-C]
                         [-E] [--highlight-style HIGHLIGHT_STYLE] [-m]
@@ -623,3 +623,15 @@ if __name__ == "__main__":
 ## Similar projects
 
 - [`bullet`](https://github.com/Mckinsey666/bullet): Creates bullet-lists with multi-selection support.
+
+## Contributing
+
+Please open [an issue on GitHub](https://github.com/IngoMeyer441/simple-term-menu/issues/new) if you experience bugs or
+miss features. Please consider to send a pull request if you can spend time on fixing the issue yourself. This project
+uses [pre-commit](https://pre-commit.com) to ensure code quality and a consistent code style. Run
+
+```bash
+make git-hooks-install
+```
+
+to install all linters as Git hooks in your local clone of `simple-term-menu`.

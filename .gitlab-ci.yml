@@ -1,36 +1,52 @@
 stages:
+- check
 - build
 - deploy
 - deploy-to-aur
+
+pre-commit:
+  stage: check
+  image: python:3
+  before_script:
+  - apt-get update
+  - apt-get install -y --no-install-recommends ruby
+  - gem install chef-utils -v 16.6.14
+  - pip install pre-commit
+  script:
+  - pre-commit run --all-files || {
+        >&2 echo "pre-commit checks failed. Please consider installing pre-commit";
+        >&2 echo "hooks in your local Git clone by running \`make git-hooks-install\`.";
+        exit 1;
+    }
 
 build-linux-executable:
   stage: build
   image: centos:7
   before_script:
-    - yum install -y epel-release
-    - yum install -y python36-pip upx
+  - yum install -y epel-release
+  - yum install -y python36-pip upx
   script:
-    - python3 setup.py bdist_pyinstaller
-    - PLATFORM=$(python3 -c 'import platform; print("{}_{}".format(platform.system(), platform.machine()).lower())');
-      mv "dist/${CI_PROJECT_NAME}" "dist/${CI_PROJECT_NAME}_${PLATFORM}"
+  - python3 setup.py bdist_pyinstaller
+  - PLATFORM=$(python3 -c 'import platform; print("{}_{}".format(platform.system(), platform.machine()).lower())');
+    mv "dist/${CI_PROJECT_NAME}" "dist/${CI_PROJECT_NAME}_${PLATFORM}"
   artifacts:
     expire_in: 1 week
     paths:
-      - dist/
+    - dist/
 
 build-macos-executable:
   stage: build
   image: macos:high-sierra-xcode-python3
   tags:
-    - libvirt
+  - libvirt
   script:
-    - python3 setup.py bdist_pyinstaller
-    - PLATFORM=$(python3 -c 'import platform; print("{}_{}".format(platform.system(), platform.machine()).lower())');
-      mv "dist/${CI_PROJECT_NAME}" "dist/${CI_PROJECT_NAME}_${PLATFORM}"
+  - python3 setup.py bdist_pyinstaller
+  - PLATFORM=$(python3 -c 'import platform; print("{}_{}".format(platform.system(), platform.machine()).lower())');
+    mv "dist/${CI_PROJECT_NAME}" "dist/${CI_PROJECT_NAME}_${PLATFORM}"
   artifacts:
     expire_in: 1 week
     paths:
-      - dist/
+    - dist/
 
 deploy-to-github:
   stage: deploy
@@ -50,8 +66,10 @@ deploy-to-github:
     git push --mirror "git@github.com:IngoMeyer441/${CI_PROJECT_NAME}.git";
     cd ..
   - if echo "${CI_COMMIT_TAG}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-      python3 -m pip install "git+https://gitlab-ci-token:${CI_JOB_TOKEN}@iffgit.fz-juelich.de/Scientific-IT-Systems/github-binary-upload.git";
-      echo "${GITHUB_ACCESS_TOKEN}" | github-binary-upload --user IngoMeyer441 "IngoMeyer441/${CI_PROJECT_NAME}" "${CI_COMMIT_TAG}" dist/*;
+      python3 -m pip install
+      "git+https://gitlab-ci-token:${CI_JOB_TOKEN}@iffgit.fz-juelich.de/Scientific-IT-Systems/github-binary-upload.git";
+      echo "${GITHUB_ACCESS_TOKEN}" |
+        github-binary-upload --user IngoMeyer441 "IngoMeyer441/${CI_PROJECT_NAME}" "${CI_COMMIT_TAG}" dist/*;
     fi
 
 deploy-to-pypi:
