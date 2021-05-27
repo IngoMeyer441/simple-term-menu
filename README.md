@@ -408,7 +408,7 @@ Furthermore, the `TerminalMenu` constructor takes these additional parameters to
 of the selected menu entry. The exit code 0 reports the cancel action. The following command line arguments are
 supported:
 
-```
+```text
 usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [-i CURSOR_INDEX] [--cursor-style CURSOR_STYLE] [-C]
                         [-E] [--highlight-style HIGHLIGHT_STYLE] [-m]

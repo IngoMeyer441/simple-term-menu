@@ -3,21 +3,22 @@ import runpy
 import subprocess
 from distutils.cmd import Command
 from tempfile import TemporaryDirectory
+from typing import List, Optional, Tuple, cast
 
 from setuptools import setup
 
 
 class PyinstallerCommand(Command):
     description = "create a self-contained executable with PyInstaller"
-    user_options = []
+    user_options = []  # type: List[Tuple[str, Optional[str], str]]
 
-    def initialize_options(self):
+    def initialize_options(self) -> None:
         pass
 
-    def finalize_options(self):
+    def finalize_options(self) -> None:
         pass
 
-    def run(self):
+    def run(self) -> None:
         with TemporaryDirectory() as temp_dir:
             subprocess.check_call(["python3", "-m", "venv", os.path.join(temp_dir, "env")])
             subprocess.check_call([os.path.join(temp_dir, "env/bin/pip"), "install", "."])
@@ -46,12 +47,12 @@ if __name__ == "__main__":
             )
 
 
-def get_version_from_pyfile(version_file="simple_term_menu.py"):
-    file_globals = runpy.run_path(version_file)
-    return file_globals["__version__"]
+def get_version_from_pyfile(version_file: str = "simple_term_menu.py") -> str:
+    file_globals = runpy.run_path(version_file)  # type: ignore
+    return cast(str, file_globals["__version__"])
 
 
-def get_long_description_from_readme(readme_filename="README.md"):
+def get_long_description_from_readme(readme_filename: str = "README.md") -> Optional[str]:
     long_description = None
     if os.path.isfile(readme_filename):
         with open(readme_filename, "r", encoding="utf-8") as readme_file:

@@ -101,14 +101,16 @@ def get_locale() -> str:
 def wcswidth(text: str) -> int:
     if not hasattr(wcswidth, "libc"):
         if platform.system() == "Darwin":
-            wcswidth.libc = ctypes.cdll.LoadLibrary("libSystem.dylib")
+            wcswidth.libc = ctypes.cdll.LoadLibrary("libSystem.dylib")  # type: ignore
         else:
-            wcswidth.libc = ctypes.cdll.LoadLibrary("libc.so.6")
+            wcswidth.libc = ctypes.cdll.LoadLibrary("libc.so.6")  # type: ignore
     user_locale = get_locale()
     # First replace any null characters with the unicode replacement character (U+FFFD) since they cannot be passed
     # in a `c_wchar_p`
     encoded_text = text.replace("\0", "\uFFFD").encode(encoding=user_locale, errors="replace")
-    return wcswidth.libc.wcswidth(ctypes.c_wchar_p(encoded_text.decode(encoding=user_locale)), len(encoded_text))
+    return wcswidth.libc.wcswidth(  # type: ignore
+        ctypes.c_wchar_p(encoded_text.decode(encoding=user_locale)), len(encoded_text)
+    )
 
 
 def static_variables(**variables: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
@@ -826,7 +828,9 @@ class TerminalMenu:
         # <NL, this is necessary to distinguish between <enter> and <Ctrl-j> since <Ctrl-j> generates <NL>)
         self._new_term[3] = cast(int, self._new_term[3]) & ~termios.ICANON & ~termios.ECHO & ~termios.ICRNL
         self._new_term[0] = cast(int, self._new_term[0]) & ~termios.ICRNL
-        termios.tcsetattr(self._tty_in.fileno(), termios.TCSAFLUSH, self._new_term)
+        termios.tcsetattr(
+            self._tty_in.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._new_term)
+        )
         # Enter terminal application mode to get expected escape codes for arrow keys
         self._tty_out.write(self._codename_to_terminal_code["enter_application_mode"])
         self._tty_out.write(self._codename_to_terminal_code["cursor_invisible"])
@@ -839,7 +843,9 @@ class TerminalMenu:
         assert self._tty_in is not None
         assert self._tty_out is not None
         assert self._old_term is not None
-        termios.tcsetattr(self._tty_out.fileno(), termios.TCSAFLUSH, self._old_term)
+        termios.tcsetattr(
+            self._tty_out.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._old_term)
+        )
         self._tty_out.write(self._codename_to_terminal_code["cursor_visible"])
         self._tty_out.write(self._codename_to_terminal_code["exit_application_mode"])
         if self._clear_screen:
@@ -972,6 +978,7 @@ class TerminalMenu:
 
         def print_search_line(current_menu_height: int) -> int:
             # pylint: disable=unsubscriptable-object
+            assert self._codename_to_terminal_code is not None
             assert self._tty_out is not None
             current_menu_block_displayed_height = 0
             num_cols = self._num_cols()
