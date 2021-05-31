@@ -2,7 +2,7 @@
 !.editorconfig
 !.gitignore
 !.gitlab-ci.yml
-!.mdl_style.rb
+!.markdownlint.yaml
 !.pre-commit-config.yaml
 *.pyc
 __pycache__/
