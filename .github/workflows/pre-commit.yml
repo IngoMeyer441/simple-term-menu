@@ -1,0 +1,18 @@
+name: pre-commit checks
+on: [push, pull_request]
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    container: python:3
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v2
+    - name: Install pre-commit
+      run: pip install pre-commit
+    - name: Run pre-commit checks
+      run: |
+        pre-commit run --all-files || {
+          >&2 echo "pre-commit checks failed. Please consider installing pre-commit";
+          >&2 echo "hooks in your local Git clone by running \`make git-hooks-install\`.";
+          exit 1;
+        }

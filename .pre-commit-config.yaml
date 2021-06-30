@@ -53,10 +53,17 @@ repos:
     args: [
       '--config-data={extends: default, rules: {indentation: {indent-sequences: consistent}, line-length: {max: 120}}}'
     ]
-- repo: https://gitlab.com/devopshq/gitlab-ci-linter
-  rev: v1.0.3
+- repo: https://github.com/sirosen/check-jsonschema
+  rev: 0.3.2
   hooks:
-  - id: gitlab-ci-linter
+  - id: check-jsonschema
+    name: "Validate GitLab CI configuration"
+    files: ^\.gitlab-ci.yml
+    args: ["--schemafile", "https://json.schemastore.org/gitlab-ci"]
+- repo: https://github.com/sirosen/check-jsonschema
+  rev: 0.3.2
+  hooks:
+  - id: check-github-workflows
 # Python specific repos:
 - repo: https://github.com/psf/black
   rev: 21.5b1
