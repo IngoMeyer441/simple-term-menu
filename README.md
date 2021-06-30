@@ -60,11 +60,11 @@ the `show` method to output the menu and wait for keyboard input:
 
 from simple_term_menu import TerminalMenu
 
-
 def main():
-    terminal_menu = TerminalMenu(["entry 1", "entry 2", "entry 3"])
+    options = ["entry 1", "entry 2", "entry 3"]
+    terminal_menu = TerminalMenu(options)
     menu_entry_index = terminal_menu.show()
-
+    print(f"You have selected {options[menu_entry_index]}!")
 
 if __name__ == "__main__":
     main()
