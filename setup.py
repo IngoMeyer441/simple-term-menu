@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
 
 def get_version_from_pyfile(version_file: str = "simple_term_menu.py") -> str:
-    file_globals = runpy.run_path(version_file)  # type: ignore
+    file_globals = runpy.run_path(version_file)
     return cast(str, file_globals["__version__"])
 
 
