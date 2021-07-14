@@ -22,7 +22,7 @@ class PyinstallerCommand(Command):
         with TemporaryDirectory() as temp_dir:
             subprocess.check_call(["python3", "-m", "venv", os.path.join(temp_dir, "env")])
             subprocess.check_call([os.path.join(temp_dir, "env/bin/pip"), "install", "."])
-            subprocess.check_call([os.path.join(temp_dir, "env/bin/pip"), "install", "pyinstaller"])
+            subprocess.check_call([os.path.join(temp_dir, "env/bin/pip"), "install", "pyinstaller<4.4"])
             with open(os.path.join(temp_dir, "entrypoint.py"), "w") as f:
                 f.write(
                     """
