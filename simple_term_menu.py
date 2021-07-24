@@ -268,6 +268,7 @@ class TerminalMenu:
             selection: "TerminalMenu.Selection",
             viewport: "TerminalMenu.Viewport",
             cycle_cursor: bool = True,
+            preselected_entries: Iterable[str] = None,
         ):
             self._menu_entries = list(menu_entries)
             self._search = search
@@ -275,6 +276,9 @@ class TerminalMenu:
             self._viewport = viewport
             self._cycle_cursor = cycle_cursor
             self._active_displayed_index = None  # type: Optional[int]
+            if preselected_entries is not None:
+                for idx in list(map(menu_entries.index, preselected_entries)):
+                    self._selection.add(idx)
             self.update_view()
 
         def update_view(self) -> None:
@@ -534,6 +538,7 @@ class TerminalMenu:
         multi_select_cursor_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_STYLE,
         multi_select_keys: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_KEYS,
         multi_select_select_on_accept: bool = DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT,
+        preselected_entries: Iterable[str] = None,
         preview_border: bool = DEFAULT_PREVIEW_BORDER,
         preview_command: Optional[Union[str, Callable[[str], str]]] = None,
         preview_size: float = DEFAULT_PREVIEW_SIZE,
@@ -620,6 +625,7 @@ class TerminalMenu:
         )
         self._multi_select_keys = tuple(multi_select_keys) if multi_select_keys is not None else ()
         self._multi_select_select_on_accept = multi_select_select_on_accept
+        self._preselected_entries = preselected_entries
         self._preview_border = preview_border
         self._preview_command = preview_command
         self._preview_size = preview_size
@@ -679,7 +685,7 @@ class TerminalMenu:
             0,
             0,
         )
-        self._view = self.View(self._menu_entries, self._search, self._selection, self._viewport, self._cycle_cursor)
+        self._view = self.View(self._menu_entries, self._search, self._selection, self._viewport, self._cycle_cursor, self._preselected_entries)
         if cursor_index and 0 < cursor_index < len(self._menu_entries):
             self._view.active_menu_index = cursor_index
         self._search.change_callback = self._view.update_view
@@ -1357,7 +1363,8 @@ class TerminalMenu:
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
         self._init_term()
-        self._selection.clear()
+        if self._preselected_entries is None:
+            self._selection.clear()
         self._chosen_accept_key = None
         self._chosen_menu_indices = None
         self._chosen_menu_index = None
