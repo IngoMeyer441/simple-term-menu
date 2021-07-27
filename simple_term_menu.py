@@ -89,6 +89,8 @@ class NoMenuEntriesError(Exception):
 class PreviewCommandFailedError(Exception):
     pass
 
+class MixedTypesError(Exception):
+    pass
 
 def get_locale() -> str:
     user_locale = locale.getlocale()[1]
@@ -268,7 +270,6 @@ class TerminalMenu:
             selection: "TerminalMenu.Selection",
             viewport: "TerminalMenu.Viewport",
             cycle_cursor: bool = True,
-            preselected_entries: Iterable[str] = None,
         ):
             self._menu_entries = list(menu_entries)
             self._search = search
@@ -276,9 +277,6 @@ class TerminalMenu:
             self._viewport = viewport
             self._cycle_cursor = cycle_cursor
             self._active_displayed_index = None  # type: Optional[int]
-            if preselected_entries is not None:
-                for idx in list(map(menu_entries.index, preselected_entries)):
-                    self._selection.add(idx)
             self.update_view()
 
         def update_view(self) -> None:
@@ -538,7 +536,7 @@ class TerminalMenu:
         multi_select_cursor_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_STYLE,
         multi_select_keys: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_KEYS,
         multi_select_select_on_accept: bool = DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT,
-        preselected_entries: Iterable[str] = None,
+        preselected_entries: Sequence[Union[str, int]] = None,
         preview_border: bool = DEFAULT_PREVIEW_BORDER,
         preview_command: Optional[Union[str, Callable[[str], str]]] = None,
         preview_size: float = DEFAULT_PREVIEW_SIZE,
@@ -678,6 +676,25 @@ class TerminalMenu:
             show_search_hint=self._show_search_hint,
         )
         self._selection = self.Selection(len(self._menu_entries))
+        if self._preselected_entries is not None:
+            if type(self._preselected_entries[0]) == str:
+                for item in self._preselected_entries:
+                    if type(item) is not str:
+                        raise MixedTypesError("Error: Cannot mix string and integer types in preselected_entries.")
+                    try:
+                        idx = self._menu_entries.index(item)
+                    except ValueError:
+                        print("Error: Pre-selection '{}' is not a valid menu entry.".format(item))
+                        raise
+                    self._selection[idx] = True
+            if type(self._preselected_entries[0]) == int:
+                for item in self._preselected_entries:
+                    if type(item) is not int:
+                        raise MixedTypesError("Error: Cannot mix string and integer types in preselected_entries.")
+                    if (item >= 0) and (item <= (len(self._menu_entries) -1)):
+                        self._selection[item] = True
+                    else:
+                        raise IndexError("Error: {} is outside the allowable range of 0..{}.".format(item,len(self._menu_entries)-1))
         self._viewport = self.Viewport(
             len(self._menu_entries),
             len(self._title_lines),
@@ -685,7 +702,7 @@ class TerminalMenu:
             0,
             0,
         )
-        self._view = self.View(self._menu_entries, self._search, self._selection, self._viewport, self._cycle_cursor, self._preselected_entries)
+        self._view = self.View(self._menu_entries, self._search, self._selection, self._viewport, self._cycle_cursor)
         if cursor_index and 0 < cursor_index < len(self._menu_entries):
             self._view.active_menu_index = cursor_index
         self._search.change_callback = self._view.update_view
@@ -1736,6 +1753,21 @@ def get_argumentparser() -> argparse.ArgumentParser:
         "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
     )
     parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "-r",
+        "--preselected_entries",
+        action="store",
+        dest="preselected_entries",
+        help="Comma separated list of strings matching menu items to start pre-selected in a multi-select menu."
+    )
+    group.add_argument(
+        "-R",
+        "--preselected_indices",
+        action="store",
+        dest="preselected_indices",
+        help="Comma separated list of ints representing indexes of menu items to start pre-selected in a multi-select menu."
+    )
     return parser
 
 
@@ -1786,6 +1818,12 @@ def parse_arguments() -> AttributeDict:
         args.show_shortcut_hints = True
     if args.multi_select:
         args.stdout = True
+    if args.preselected_entries is not None:
+        args.preselected = list(args.preselected_entries.split(","))
+    elif args.preselected_indices is not None:
+        args.preselected = list(map(int,args.preselected_indices.split(",")))
+    else:
+        args.preselected = None
     return args
 
 
@@ -1817,6 +1855,7 @@ def main() -> None:
             multi_select_cursor_style=args.multi_select_cursor_style,
             multi_select_keys=args.multi_select_keys,
             multi_select_select_on_accept=args.multi_select_select_on_accept,
+            preselected_entries=args.preselected,
             preview_border=args.preview_border,
             preview_command=args.preview_command,
             preview_size=args.preview_size,

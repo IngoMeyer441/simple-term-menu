@@ -231,6 +231,9 @@ you can define another set of keys to toggle a selected item. By passing `show_m
 mode hint is shown in the status bar. If you don't want the `accept_key` to also select the last highlighted item you
 can pass `multi_select_select_on_accept=False` (if no menu item is explicitly selected, the last highlighted menu item
 will still be added to the selection).
+An optional list 'preselected_entries' can also be passed to have items already selected when the menu is displayed.
+This list can be composed of either integers representing indexes of the menu_entries list, or strings matching the
+elements of menu_entries. Mixing types is not allowed.
 
 #### Multi-select example
 
