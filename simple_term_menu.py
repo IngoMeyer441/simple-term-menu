@@ -89,8 +89,10 @@ class NoMenuEntriesError(Exception):
 class PreviewCommandFailedError(Exception):
     pass
 
+
 class MixedTypesError(Exception):
     pass
+
 
 def get_locale() -> str:
     user_locale = locale.getlocale()[1]
@@ -536,7 +538,7 @@ class TerminalMenu:
         multi_select_cursor_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_STYLE,
         multi_select_keys: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_KEYS,
         multi_select_select_on_accept: bool = DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT,
-        preselected_entries: Sequence[Union[str, int]] = None,
+        preselected_entries: Optional[Sequence[Union[str, int]]] = None,
         preview_border: bool = DEFAULT_PREVIEW_BORDER,
         preview_command: Optional[Union[str, Callable[[str], str]]] = None,
         preview_size: float = DEFAULT_PREVIEW_SIZE,
@@ -691,10 +693,14 @@ class TerminalMenu:
                 for item in self._preselected_entries:
                     if type(item) is not int:
                         raise MixedTypesError("Error: Cannot mix string and integer types in preselected_entries.")
-                    if (item >= 0) and (item <= (len(self._menu_entries) -1)):
+                    if (item >= 0) and (item <= (len(self._menu_entries) - 1)):
                         self._selection[item] = True
                     else:
-                        raise IndexError("Error: {} is outside the allowable range of 0..{}.".format(item,len(self._menu_entries)-1))
+                        raise IndexError(
+                            "Error: {} is outside the allowable range of 0..{}.".format(
+                                item, len(self._menu_entries) - 1
+                            )
+                        )
         self._viewport = self.Viewport(
             len(self._menu_entries),
             len(self._title_lines),
@@ -1759,14 +1765,14 @@ def get_argumentparser() -> argparse.ArgumentParser:
         "--preselected_entries",
         action="store",
         dest="preselected_entries",
-        help="Comma separated list of strings matching menu items to start pre-selected in a multi-select menu."
+        help="Comma separated list of strings matching menu items to start pre-selected in a multi-select menu.",
     )
     group.add_argument(
         "-R",
         "--preselected_indices",
         action="store",
         dest="preselected_indices",
-        help="Comma separated list of ints representing indexes of menu items to start pre-selected in a multi-select menu."
+        help="Comma separated list of numeric indexes of menu items to start pre-selected in a multi-select menu.",
     )
     return parser
 
@@ -1821,7 +1827,7 @@ def parse_arguments() -> AttributeDict:
     if args.preselected_entries is not None:
         args.preselected = list(args.preselected_entries.split(","))
     elif args.preselected_indices is not None:
-        args.preselected = list(map(int,args.preselected_indices.split(",")))
+        args.preselected = list(map(int, args.preselected_indices.split(",")))
     else:
         args.preselected = None
     return args
