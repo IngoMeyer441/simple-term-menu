@@ -78,6 +78,10 @@ DEFAULT_STATUS_BAR_STYLE = ("fg_yellow", "bg_black")
 MIN_VISIBLE_MENU_ENTRIES_COUNT = 3
 
 
+class InvalidParameterCombinationError(Exception):
+    pass
+
+
 class InvalidStyleError(Exception):
     pass
 
@@ -90,7 +94,7 @@ class PreviewCommandFailedError(Exception):
     pass
 
 
-class MixedTypesError(Exception):
+class UnknownMenuEntryError(Exception):
     pass
 
 
@@ -225,9 +229,9 @@ class TerminalMenu:
             return wcswidth(self._search_text) if self._search_text is not None else 0
 
     class Selection:
-        def __init__(self, num_menu_entries: int):
+        def __init__(self, num_menu_entries: int, preselected_indices: Optional[Iterable[int]] = None):
             self._num_menu_entries = num_menu_entries
-            self._selected_menu_indices = set()  # type: Set[int]
+            self._selected_menu_indices = set(preselected_indices) if preselected_indices is not None else set()
 
         def clear(self) -> None:
             self._selected_menu_indices.clear()
@@ -538,7 +542,7 @@ class TerminalMenu:
         multi_select_cursor_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_STYLE,
         multi_select_keys: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_KEYS,
         multi_select_select_on_accept: bool = DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT,
-        preselected_entries: Optional[Sequence[Union[str, int]]] = None,
+        preselected_entries: Optional[Iterable[Union[str, int]]] = None,
         preview_border: bool = DEFAULT_PREVIEW_BORDER,
         preview_command: Optional[Union[str, Callable[[str], str]]] = None,
         preview_size: float = DEFAULT_PREVIEW_SIZE,
@@ -579,6 +583,33 @@ class TerminalMenu:
                 menu_entries.append(display_text)
                 preview_arguments.append(preview_argument)
             return menu_entries, shortcut_keys, preview_arguments
+
+        def convert_preselected_entries_to_indices(
+            preselected_indices_or_entries: Iterable[Union[str, int]]
+        ) -> Set[int]:
+            menu_entry_to_indices = {}  # type: Dict[str, Set[int]]
+            for menu_index, menu_entry in enumerate(self._menu_entries):
+                menu_entry_to_indices.setdefault(menu_entry, set())
+                menu_entry_to_indices[menu_entry].add(menu_index)
+            preselected_indices = set()
+            for item in preselected_indices_or_entries:
+                if isinstance(item, int):
+                    if 0 <= item < len(self._menu_entries):
+                        preselected_indices.add(item)
+                    else:
+                        raise IndexError(
+                            "Error: {} is outside the allowable range of 0..{}.".format(
+                                item, len(self._menu_entries) - 1
+                            )
+                        )
+                elif isinstance(item, str):
+                    try:
+                        preselected_indices.update(menu_entry_to_indices[item])
+                    except KeyError as e:
+                        raise UnknownMenuEntryError('Pre-selection "{}" is not a valid menu entry.'.format(item)) from e
+                else:
+                    raise ValueError('"preselected_entries" must either contain integers or strings.')
+            return preselected_indices
 
         def setup_title_or_status_bar_lines(
             title_or_status_bar: Optional[Union[str, Iterable[str]]],
@@ -625,7 +656,13 @@ class TerminalMenu:
         )
         self._multi_select_keys = tuple(multi_select_keys) if multi_select_keys is not None else ()
         self._multi_select_select_on_accept = multi_select_select_on_accept
-        self._preselected_entries = preselected_entries
+        if preselected_entries and not self._multi_select:
+            raise InvalidParameterCombinationError(
+                "Multi-select mode must be enabled when preselected entries are given."
+            )
+        self._preselected_indices = (
+            convert_preselected_entries_to_indices(preselected_entries) if preselected_entries is not None else None
+        )
         self._preview_border = preview_border
         self._preview_command = preview_command
         self._preview_size = preview_size
@@ -677,30 +714,7 @@ class TerminalMenu:
             case_senitive=self._search_case_sensitive,
             show_search_hint=self._show_search_hint,
         )
-        self._selection = self.Selection(len(self._menu_entries))
-        if self._preselected_entries is not None:
-            if type(self._preselected_entries[0]) == str:
-                for item in self._preselected_entries:
-                    if type(item) is not str:
-                        raise MixedTypesError("Error: Cannot mix string and integer types in preselected_entries.")
-                    try:
-                        idx = self._menu_entries.index(item)
-                    except ValueError:
-                        print("Error: Pre-selection '{}' is not a valid menu entry.".format(item))
-                        raise
-                    self._selection[idx] = True
-            if type(self._preselected_entries[0]) == int:
-                for item in self._preselected_entries:
-                    if type(item) is not int:
-                        raise MixedTypesError("Error: Cannot mix string and integer types in preselected_entries.")
-                    if (item >= 0) and (item <= (len(self._menu_entries) - 1)):
-                        self._selection[item] = True
-                    else:
-                        raise IndexError(
-                            "Error: {} is outside the allowable range of 0..{}.".format(
-                                item, len(self._menu_entries) - 1
-                            )
-                        )
+        self._selection = self.Selection(len(self._menu_entries), self._preselected_indices)
         self._viewport = self.Viewport(
             len(self._menu_entries),
             len(self._title_lines),
@@ -1386,7 +1400,7 @@ class TerminalMenu:
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
         self._init_term()
-        if self._preselected_entries is None:
+        if self._preselected_indices is None:
             self._selection.clear()
         self._chosen_accept_key = None
         self._chosen_menu_indices = None
@@ -1882,7 +1896,7 @@ def main() -> None:
             status_bar_style=args.status_bar_style,
             title=args.title,
         )
-    except InvalidStyleError as e:
+    except (InvalidParameterCombinationError, InvalidStyleError, UnknownMenuEntryError) as e:
         print(str(e), file=sys.stderr)
         sys.exit(0)
     chosen_entries = terminal_menu.show()

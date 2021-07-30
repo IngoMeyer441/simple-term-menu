@@ -231,9 +231,10 @@ you can define another set of keys to toggle a selected item. By passing `show_m
 mode hint is shown in the status bar. If you don't want the `accept_key` to also select the last highlighted item you
 can pass `multi_select_select_on_accept=False` (if no menu item is explicitly selected, the last highlighted menu item
 will still be added to the selection).
-An optional list 'preselected_entries' can also be passed to have items already selected when the menu is displayed.
-This list can be composed of either integers representing indexes of the menu_entries list, or strings matching the
-elements of menu_entries. Mixing types is not allowed.
+
+An optional list (or any other iterable object) `preselected_entries` can also be passed to have items already selected
+when the menu is displayed.  This list can be composed of either integers representing indexes of the `menu_entries`
+list, or strings matching the elements of `menu_entries`. Integers and strings can be mixed.
 
 #### Multi-select example
 
@@ -435,6 +436,7 @@ usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [--show-shortcut-hints-in-title] [-b STATUS_BAR] [-d]
                         [--status-bar-style STATUS_BAR_STYLE] [--stdout]
                         [-t TITLE] [-V]
+                        [-r PRESELECTED_ENTRIES | -R PRESELECTED_INDICES]
                         [entries ...]
 
 simple-term-menu creates simple interactive menus in the terminal and returns the selected entry as exit code.
@@ -528,6 +530,12 @@ optional arguments:
   -t TITLE, --title TITLE
                         menu title
   -V, --version         print the version number and exit
+  -r PRESELECTED_ENTRIES, --preselected_entries PRESELECTED_ENTRIES
+                        Comma separated list of strings matching menu items to
+                        start pre-selected in a multi-select menu.
+  -R PRESELECTED_INDICES, --preselected_indices PRESELECTED_INDICES
+                        Comma separated list of numeric indexes of menu items
+                        to start pre-selected in a multi-select menu.
 ```
 
 #### Example with preview option
