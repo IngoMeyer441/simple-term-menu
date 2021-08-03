@@ -22,7 +22,7 @@ class PyinstallerCommand(Command):
         with TemporaryDirectory() as temp_dir:
             subprocess.check_call(["python3", "-m", "venv", os.path.join(temp_dir, "env")])
             subprocess.check_call([os.path.join(temp_dir, "env/bin/pip"), "install", "."])
-            subprocess.check_call([os.path.join(temp_dir, "env/bin/pip"), "install", "pyinstaller"])
+            subprocess.check_call([os.path.join(temp_dir, "env/bin/pip"), "install", "pyinstaller<4.4"])
             with open(os.path.join(temp_dir, "entrypoint.py"), "w") as f:
                 f.write(
                     """
@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
 
 def get_version_from_pyfile(version_file: str = "simple_term_menu.py") -> str:
-    file_globals = runpy.run_path(version_file)  # type: ignore
+    file_globals = runpy.run_path(version_file)
     return cast(str, file_globals["__version__"])
 
 
