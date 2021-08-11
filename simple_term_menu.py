@@ -33,8 +33,16 @@ from typing import (
     cast,
 )
 
+if platform.system() == "Windows":
+    WINDOWS = True
+
 try:
-    import termios
+    if WINDOWS:
+        import msvcrt
+        ESC = "\x1b"  # or "\033["
+        CSI = f"{ESC}["
+    else:
+        import termios
 except ImportError as e:
     raise NotImplementedError('"{}" is currently not supported.'.format(platform.system())) from e
 
@@ -110,12 +118,17 @@ def wcswidth(text: str) -> int:
     if not hasattr(wcswidth, "libc"):
         if platform.system() == "Darwin":
             wcswidth.libc = ctypes.cdll.LoadLibrary("libSystem.dylib")  # type: ignore
+        elif WINDOWS:
+            pass
         else:
             wcswidth.libc = ctypes.cdll.LoadLibrary("libc.so.6")  # type: ignore
     user_locale = get_locale()
     # First replace any null characters with the unicode replacement character (U+FFFD) since they cannot be passed
     # in a `c_wchar_p`
     encoded_text = text.replace("\0", "\uFFFD").encode(encoding=user_locale, errors="replace")
+    if WINDOWS:
+        # Should use something like https://github.com/jquast/wcwidth
+        return len(encoded_text.decode(encoding=user_locale))
     return wcswidth.libc.wcswidth(  # type: ignore
         ctypes.c_wchar_p(encoded_text.decode(encoding=user_locale)), len(encoded_text)
     )
@@ -475,42 +488,82 @@ class TerminalMenu:
         def must_scroll(self) -> bool:
             return self._num_menu_entries > self._num_lines
 
-    _codename_to_capname = {
-        "bg_black": "setab 0",
-        "bg_blue": "setab 4",
-        "bg_cyan": "setab 6",
-        "bg_gray": "setab 7",
-        "bg_green": "setab 2",
-        "bg_purple": "setab 5",
-        "bg_red": "setab 1",
-        "bg_yellow": "setab 3",
-        "bold": "bold",
-        "clear": "clear",
-        "colors": "colors",
-        "cursor_down": "cud1",
-        "cursor_invisible": "civis",
-        "cursor_left": "cub1",
-        "cursor_right": "cuf1",
-        "cursor_up": "cuu1",
-        "cursor_visible": "cnorm",
-        "delete_line": "dl1",
-        "down": "kcud1",
-        "enter_application_mode": "smkx",
-        "exit_application_mode": "rmkx",
-        "fg_black": "setaf 0",
-        "fg_blue": "setaf 4",
-        "fg_cyan": "setaf 6",
-        "fg_gray": "setaf 7",
-        "fg_green": "setaf 2",
-        "fg_purple": "setaf 5",
-        "fg_red": "setaf 1",
-        "fg_yellow": "setaf 3",
-        "italics": "sitm",
-        "reset_attributes": "sgr0",
-        "standout": "smso",
-        "underline": "smul",
-        "up": "kcuu1",
-    }
+    if WINDOWS:
+        # msdn.microsoft.com/en-us/library/dd375731
+        # https://docs.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
+        _codename_to_capname = {
+            "bg_black": f"{CSI}40m",
+            "bg_red": f"{CSI}41m",
+            "bg_green": f"{CSI}42m",
+            "bg_yellow": f"{CSI}43m",
+            "bg_blue": f"{CSI}44m",
+            "bg_purple": f"{CSI}45m",
+            "bg_cyan": f"{CSI}46m",
+            "bg_gray": f"{CSI}47m",
+            "bold": f"{CSI}1m",
+            "clear": f"{CSI}2J",
+            "colors": f"",  # Should always be enough on patched Windows 10
+            "cursor_down": f"{CSI}1B",
+            "cursor_invisible": f"{CSI}?25l",
+            "cursor_left": f"{CSI}1D",
+            "cursor_right": f"{CSI}1C",
+            "cursor_up": f"{CSI}1A",
+            "cursor_visible": f"{CSI}?25h",
+            "delete_line": f"{CSI}1M",
+            "down": f"",  # ?
+            "enter_application_mode": f"",
+            "exit_application_mode": f"",
+            "fg_black": f"{CSI}30m",
+            "fg_red": f"{CSI}31m",
+            "fg_green": f"{CSI}32m",
+            "fg_yellow": f"{CSI}33m",
+            "fg_blue": f"{CSI}34m",
+            "fg_purple": f"{CSI}35m",
+            "fg_cyan": f"{CSI}36m",
+            "fg_gray": f"{CSI}37m",
+            "italics": f"{CSI}1m",  # BOLD - Italic not supported, to my knowledge
+            "reset_attributes": f"{CSI}0m",
+            "standout": f"",  # ?
+            "underline": f"{CSI}4m",
+            "up": f"",  # ?
+        }
+    else:
+        _codename_to_capname = {
+            "bg_black": "setab 0",
+            "bg_blue": "setab 4",
+            "bg_cyan": "setab 6",
+            "bg_gray": "setab 7",
+            "bg_green": "setab 2",
+            "bg_purple": "setab 5",
+            "bg_red": "setab 1",
+            "bg_yellow": "setab 3",
+            "bold": "bold",
+            "clear": "clear",
+            "colors": "colors",
+            "cursor_down": "cud1",
+            "cursor_invisible": "civis",
+            "cursor_left": "cub1",
+            "cursor_right": "cuf1",
+            "cursor_up": "cuu1",
+            "cursor_visible": "cnorm",
+            "delete_line": "dl1",
+            "down": "kcud1",
+            "enter_application_mode": "smkx",
+            "exit_application_mode": "rmkx",
+            "fg_black": "setaf 0",
+            "fg_blue": "setaf 4",
+            "fg_cyan": "setaf 6",
+            "fg_gray": "setaf 7",
+            "fg_green": "setaf 2",
+            "fg_purple": "setaf 5",
+            "fg_red": "setaf 1",
+            "fg_yellow": "setaf 3",
+            "italics": "sitm",
+            "reset_attributes": "sgr0",
+            "standout": "smso",
+            "underline": "smul",
+            "up": "kcuu1",
+        }
     _name_to_control_character = {
         "backspace": "",  # Is assigned later in `self._init_backspace_control_character`
         "ctrl-j": "\012",
@@ -540,7 +593,6 @@ class TerminalMenu:
         multi_select_cursor: str = DEFAULT_MULTI_SELECT_CURSOR,
         multi_select_cursor_brackets_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_BRACKETS_STYLE,
         multi_select_cursor_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_STYLE,
-        multi_select_empty_ok: bool = False,
         multi_select_keys: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_KEYS,
         multi_select_select_on_accept: bool = DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT,
         preselected_entries: Optional[Iterable[Union[str, int]]] = None,
@@ -643,7 +695,6 @@ class TerminalMenu:
         self._clear_menu_on_exit = clear_menu_on_exit
         self._clear_screen = clear_screen
         self._cycle_cursor = cycle_cursor
-        self._multi_select_empty_ok = multi_select_empty_ok
         self._exit_on_shortcut = exit_on_shortcut
         self._menu_cursor = menu_cursor if menu_cursor is not None else ""
         self._menu_cursor_style = tuple(menu_cursor_style) if menu_cursor_style is not None else ()
@@ -709,7 +760,8 @@ class TerminalMenu:
         self._chosen_menu_index = None  # type: Optional[int]
         self._chosen_menu_indices = None  # type: Optional[Tuple[int, ...]]
         self._paint_before_next_read = False
-        self._previous_displayed_menu_height = None  # type: Optional[int]
+        # Triggers 'AssertionError' in '_clear_menu' if set to None
+        self._previous_displayed_menu_height = 0  # type: Optional[int]
         self._reading_next_key = False
         self._search = self.Search(
             self._menu_entries,
@@ -779,6 +831,9 @@ class TerminalMenu:
 
     @classmethod
     def _init_backspace_control_character(self) -> None:
+        if WINDOWS:
+            self._name_to_control_character["backspace"] = "\x08"
+            return
         try:
             with open("/dev/tty", "r") as tty:
                 stty_output = subprocess.check_output(["stty", "-a"], universal_newlines=True, stdin=tty)
@@ -807,7 +862,10 @@ class TerminalMenu:
     def _init_terminal_codes(cls) -> None:
         if cls._codename_to_terminal_code is not None:
             return
-        supported_colors = int(cls._query_terminfo_database("colors"))
+        if WINDOWS:
+            supported_colors = 8
+        else:
+            supported_colors = int(cls._query_terminfo_database("colors"))
         cls._codename_to_terminal_code = {
             codename: cls._query_terminfo_database(codename)
             if not (codename.startswith("bg_") or codename.startswith("fg_")) or supported_colors >= 8
@@ -825,6 +883,8 @@ class TerminalMenu:
             capname = cls._codename_to_capname[codename]
         else:
             capname = codename
+        if WINDOWS:
+            return capname
         try:
             return subprocess.check_output(["tput"] + capname.split(), universal_newlines=True)
         except subprocess.CalledProcessError as e:
@@ -834,12 +894,23 @@ class TerminalMenu:
             raise e
 
     @classmethod
+    def _get_terminal_size_windows(cls) -> (int, int):
+        cols, rows = os.get_terminal_size(sys.stdout.fileno())
+        return (cols, rows)
+
+    @classmethod
     def _num_lines(self) -> int:
-        return int(self._query_terminfo_database("lines"))
+        if WINDOWS:
+            return self._get_terminal_size_windows()[1]
+        else:
+            return int(self._query_terminfo_database("lines"))
 
     @classmethod
     def _num_cols(self) -> int:
-        return int(self._query_terminfo_database("cols"))
+        if WINDOWS:
+            return self._get_terminal_size_windows()[0]
+        else:
+            return int(self._query_terminfo_database("cols"))
 
     def _check_for_valid_styles(self) -> None:
         invalid_styles = []
@@ -865,32 +936,45 @@ class TerminalMenu:
     def _init_term(self) -> None:
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
-        self._tty_in = open("/dev/tty", "r", encoding=self._user_locale)
-        self._tty_out = open("/dev/tty", "w", encoding=self._user_locale, errors="replace")
-        self._old_term = termios.tcgetattr(self._tty_in.fileno())
-        self._new_term = termios.tcgetattr(self._tty_in.fileno())
-        # set the terminal to: unbuffered, no echo and no <CR> to <NL> translation (so <enter> sends <CR> instead of
-        # <NL, this is necessary to distinguish between <enter> and <Ctrl-j> since <Ctrl-j> generates <NL>)
-        self._new_term[3] = cast(int, self._new_term[3]) & ~termios.ICANON & ~termios.ECHO & ~termios.ICRNL
-        self._new_term[0] = cast(int, self._new_term[0]) & ~termios.ICRNL
-        termios.tcsetattr(
-            self._tty_in.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._new_term)
-        )
+        if WINDOWS:
+            self._tty_in = open(sys.stdin.fileno(), "r", encoding=self._user_locale)
+            self._tty_out = open(sys.stdout.fileno(), "w", encoding=self._user_locale, errors="replace")
+        else:
+            self._tty_in = open("/dev/tty", "r", encoding=self._user_locale)
+            self._tty_out = open("/dev/tty", "w", encoding=self._user_locale, errors="replace")
+            self._old_term = termios.tcgetattr(self._tty_in.fileno())
+            self._new_term = termios.tcgetattr(self._tty_in.fileno())
+            # set the terminal to: unbuffered, no echo and no <CR> to <NL> translation (so <enter> sends <CR> instead of
+            # <NL, this is necessary to distinguish between <enter> and <Ctrl-j> since <Ctrl-j> generates <NL>)
+            self._new_term[3] = cast(int, self._new_term[3]) & ~termios.ICANON & ~termios.ECHO & ~termios.ICRNL
+            self._new_term[0] = cast(int, self._new_term[0]) & ~termios.ICRNL
+            termios.tcsetattr(
+                self._tty_in.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._new_term)
+            )
         # Enter terminal application mode to get expected escape codes for arrow keys
         self._tty_out.write(self._codename_to_terminal_code["enter_application_mode"])
         self._tty_out.write(self._codename_to_terminal_code["cursor_invisible"])
+        if WINDOWS:
+            # Enable VT100 mode in CMD.exe
+            # This apparently works because of a bug and does not disable it after exit: https://stackoverflow.com/a/39675059
+            # Here is a proper implementation, which I didn't get to work yet: https://bugs.python.org/issue30075
+            os.system('')
         if self._clear_screen:
             self._tty_out.write(self._codename_to_terminal_code["clear"])
+            if WINDOWS:
+                # Move cursor from bottom left to top left
+                self._tty_out.write(self._get_terminal_size_windows()[1] * self._codename_to_terminal_code["cursor_up"])
 
     def _reset_term(self) -> None:
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
         assert self._tty_in is not None
         assert self._tty_out is not None
-        assert self._old_term is not None
-        termios.tcsetattr(
-            self._tty_out.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._old_term)
-        )
+        if not WINDOWS:
+            assert self._old_term is not None
+            termios.tcsetattr(
+                self._tty_out.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._old_term)
+            )
         self._tty_out.write(self._codename_to_terminal_code["cursor_visible"])
         self._tty_out.write(self._codename_to_terminal_code["exit_application_mode"])
         if self._clear_screen:
@@ -1370,7 +1454,18 @@ class TerminalMenu:
             self._paint_menu()
             self._paint_before_next_read = False
         # blocks until any amount of bytes is available
-        code = os.read(self._tty_in.fileno(), 80).decode("ascii", errors="ignore")
+        if WINDOWS:
+            # https://stackoverflow.com/a/12178312
+            code = b'\xe0'
+            while code == b'\xe0' or code == b'\x00':
+                # Does not properly catch arrow and F keys
+                # e.g. if typed when searching:
+                # - Arrow keys trigger 'standout' and 'H'/'K'/'P'/'M'
+                # - F keys 1 - 10 trigger ';'/'<'/'='/'>'/'?'/'@'/'A'/'B'/'C'/'D'
+                code = msvcrt.getch().decode("ascii", errors="ignore")
+                # Also didn't test Ctrl and Alt combinations yet
+        else:
+            code = os.read(self._tty_in.fileno(), 80).decode("ascii", errors="ignore")
         self._reading_next_key = False
         if code in self._terminal_code_to_codename:
             return self._terminal_code_to_codename[code]
@@ -1389,10 +1484,12 @@ class TerminalMenu:
                 else:
                     self._paint_before_next_read = True
 
-            signal.signal(signal.SIGWINCH, handle_sigwinch)
+            if not WINDOWS:
+                signal.signal(signal.SIGWINCH, handle_sigwinch)
 
         def reset_signal_handling() -> None:
-            signal.signal(signal.SIGWINCH, signal.SIG_DFL)
+            if not WINDOWS:
+                signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
         def remove_letter_keys(menu_action_to_keys: Dict[str, Set[Optional[str]]]) -> None:
             letter_keys = frozenset(string.ascii_lowercase) | frozenset(" ")
@@ -1450,9 +1547,7 @@ class TerminalMenu:
                         self._selection.toggle(self._view.active_menu_index)
                 elif next_key in current_menu_action_to_keys["accept"]:
                     if self._view.active_menu_index is not None:
-                        if self._multi_select_select_on_accept or (
-                            not self._selection and self._multi_select_empty_ok is False
-                        ):
+                        if self._multi_select_select_on_accept or not self._selection:
                             self._selection.add(self._view.active_menu_index)
                     self._chosen_accept_key = next_key
                     break
@@ -1635,12 +1730,6 @@ def get_argumentparser() -> argparse.ArgumentParser:
             "do not select the currently highlighted menu item when the accept key is pressed "
             "(it is still selected if no other item was selected before)"
         ),
-    )
-    parser.add_argument(
-        "--multi-select-empty-ok",
-        action="store_true",
-        dest="multi_select_empty_ok",
-        help=("when used together with --multi-select-no-select-on-accept allows returning no selection at all"),
     )
     parser.add_argument(
         "-p",
@@ -1883,7 +1972,6 @@ def main() -> None:
             multi_select_cursor=args.multi_select_cursor,
             multi_select_cursor_brackets_style=args.multi_select_cursor_brackets_style,
             multi_select_cursor_style=args.multi_select_cursor_style,
-            multi_select_empty_ok=args.multi_select_empty_ok,
             multi_select_keys=args.multi_select_keys,
             multi_select_select_on_accept=args.multi_select_select_on_accept,
             preselected_entries=args.preselected,
@@ -1923,7 +2011,6 @@ def main() -> None:
             if args.stdout:
                 print(chosen_entry + 1)
             sys.exit(chosen_entry + 1)
-
 
 if __name__ == "__main__":
     main()
