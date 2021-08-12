@@ -879,12 +879,23 @@ class TerminalMenu:
             raise e
 
     @classmethod
+    def _get_windows_terminal_size(cls) -> (int, int):
+        cols, rows = os.get_terminal_size(sys.stdout.fileno())
+        return (cols, rows)
+
+    @classmethod
     def _num_lines(self) -> int:
-        return int(self._query_terminfo_database("lines"))
+        if WINDOWS:
+            return self._get_windows_terminal_size()[1]
+        else:
+            return int(self._query_terminfo_database("lines"))
 
     @classmethod
     def _num_cols(self) -> int:
-        return int(self._query_terminfo_database("cols"))
+        if WINDOWS:
+            return self._get_windows_terminal_size()[0]
+        else:
+            return int(self._query_terminfo_database("cols"))
 
     def _check_for_valid_styles(self) -> None:
         invalid_styles = []
