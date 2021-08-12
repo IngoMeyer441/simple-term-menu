@@ -849,7 +849,10 @@ class TerminalMenu:
     def _init_terminal_codes(cls) -> None:
         if cls._codename_to_terminal_code is not None:
             return
-        supported_colors = int(cls._query_terminfo_database("colors"))
+        if WINDOWS:
+            supported_colors = 8
+        else:
+            supported_colors = int(cls._query_terminfo_database("colors"))
         cls._codename_to_terminal_code = {
             codename: cls._query_terminfo_database(codename)
             if not (codename.startswith("bg_") or codename.startswith("fg_")) or supported_colors >= 8
