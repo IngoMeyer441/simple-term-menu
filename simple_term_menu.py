@@ -33,6 +33,9 @@ from typing import (
     cast,
 )
 
+if platform.system() == "Windows":
+    WINDOWS = True
+
 try:
     import termios
 except ImportError as e:
