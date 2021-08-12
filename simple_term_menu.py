@@ -557,7 +557,10 @@ class TerminalMenu:
         "down": f"",
         "up": f"",
     }
-    _codenames = tuple(_codename_to_capname.keys())
+    if WINDOWS:
+        _codenames = tuple(_codename_to_ansi_code.keys())
+    else:
+        _codenames = tuple(_codename_to_capname.keys())
     _codename_to_terminal_code = None  # type: Optional[Dict[str, str]]
     _terminal_code_to_codename = None  # type: Optional[Dict[str, str]]
 
@@ -852,9 +855,9 @@ class TerminalMenu:
         if WINDOWS:
             supported_colors = 8
         else:
-            supported_colors = int(cls._query_terminfo_database("colors"))
+            supported_colors = int(cls._query_codename_value("colors"))
         cls._codename_to_terminal_code = {
-            codename: cls._query_terminfo_database(codename)
+            codename: cls._query_codename_value(codename)
             if not (codename.startswith("bg_") or codename.startswith("fg_")) or supported_colors >= 8
             else ""
             for codename in cls._codenames
@@ -863,6 +866,17 @@ class TerminalMenu:
         cls._terminal_code_to_codename = {
             terminal_code: codename for codename, terminal_code in cls._codename_to_terminal_code.items()
         }
+
+    @classmethod
+    def _query_codename_value(cls, codename: str) -> str:
+        if WINDOWS:
+            return cls._query_ansi_code(codename)
+        else:
+            return cls._query_terminfo_database(codename)
+
+    @classmethod
+    def _query_ansi_code(cls, codename: str) -> str:
+        return _codename_to_ansi_code[codename]
 
     @classmethod
     def _query_terminfo_database(cls, codename: str) -> str:
