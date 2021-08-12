@@ -935,22 +935,33 @@ class TerminalMenu:
     def _init_term(self) -> None:
         # pylint: disable=unsubscriptable-object
         assert self._codename_to_terminal_code is not None
-        self._stdin = open("/dev/tty", "r", encoding=self._user_locale)
-        self._stdout = open("/dev/tty", "w", encoding=self._user_locale, errors="replace")
-        self._old_term = termios.tcgetattr(self._stdin.fileno())
-        self._new_term = termios.tcgetattr(self._stdin.fileno())
-        # set the terminal to: unbuffered, no echo and no <CR> to <NL> translation (so <enter> sends <CR> instead of
-        # <NL, this is necessary to distinguish between <enter> and <Ctrl-j> since <Ctrl-j> generates <NL>)
-        self._new_term[3] = cast(int, self._new_term[3]) & ~termios.ICANON & ~termios.ECHO & ~termios.ICRNL
-        self._new_term[0] = cast(int, self._new_term[0]) & ~termios.ICRNL
-        termios.tcsetattr(
-            self._stdin.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._new_term)
-        )
+        if WINDOWS:
+            self._stdin = open(sys.stdin.fileno(), "r", encoding=self._user_locale)
+            self._stdout = open(sys.stdout.fileno(), "w", encoding=self._user_locale, errors="replace")
+        else:
+            self._stdin = open("/dev/tty", "r", encoding=self._user_locale)
+            self._stdout = open("/dev/tty", "w", encoding=self._user_locale, errors="replace")
+            self._old_term = termios.tcgetattr(self._stdin.fileno())
+            self._new_term = termios.tcgetattr(self._stdin.fileno())
+            # set the terminal to: unbuffered, no echo and no <CR> to <NL> translation (so <enter> sends <CR> instead of
+            # <NL, this is necessary to distinguish between <enter> and <Ctrl-j> since <Ctrl-j> generates <NL>)
+            self._new_term[3] = cast(int, self._new_term[3]) & ~termios.ICANON & ~termios.ECHO & ~termios.ICRNL
+            self._new_term[0] = cast(int, self._new_term[0]) & ~termios.ICRNL
+            termios.tcsetattr(
+                self._stdin.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._new_term)
+            )
         # Enter terminal application mode to get expected escape codes for arrow keys
         self._stdout.write(self._codename_to_terminal_code["enter_application_mode"])
         self._stdout.write(self._codename_to_terminal_code["cursor_invisible"])
+        if WINDOWS:
+            # Enable VT100 mode in CMD.exe
+            # TODO: Proper implementation - https://bugs.python.org/issue30075
+            os.system('')
         if self._clear_screen:
-            self._stdout.write(self._codename_to_terminal_code["clear"])
+            self._tty_out.write(self._codename_to_terminal_code["clear"])
+            if WINDOWS:
+                # Move cursor from bottom left to top left
+                self._tty_out.write(self._get_terminal_size_windows()[1] * self._codename_to_terminal_code["cursor_up"])
 
     def _reset_term(self) -> None:
         # pylint: disable=unsubscriptable-object
