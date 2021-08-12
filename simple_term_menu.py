@@ -817,6 +817,10 @@ class TerminalMenu:
 
     @classmethod
     def _init_backspace_control_character(self) -> None:
+        if WINDOWS:
+            # https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+            self._name_to_control_character["backspace"] = "\x08"
+            return
         try:
             with open("/dev/tty", "r") as tty:
                 stty_output = subprocess.check_output(["stty", "-a"], universal_newlines=True, stdin=tty)
