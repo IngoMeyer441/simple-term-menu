@@ -522,6 +522,41 @@ class TerminalMenu:
         "escape": "\033",
         "tab": "\t",
     }
+    # https://docs.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
+    _codename_to_ansi_code = {
+        "clear": f"{_name_to_control_character['escape']}2J",
+        "delete_line": f"{_name_to_control_character['escape']}[1M",
+        "cursor_invisible": f"{_name_to_control_character['escape']}[?25l",
+        "cursor_visible": f"{_name_to_control_character['escape']}[?25h",
+        "bg_black": f"{_name_to_control_character['escape']}[40m",
+        "bg_red": f"{_name_to_control_character['escape']}[41m",
+        "bg_green": f"{_name_to_control_character['escape']}[42m",
+        "bg_yellow": f"{_name_to_control_character['escape']}[43m",
+        "bg_blue": f"{_name_to_control_character['escape']}[44m",
+        "bg_purple": f"{_name_to_control_character['escape']}[45m",
+        "bg_cyan": f"{_name_to_control_character['escape']}[46m",
+        "bg_gray": f"{_name_to_control_character['escape']}[47m",
+        "fg_black": f"{_name_to_control_character['escape']}[30m",
+        "fg_red": f"{_name_to_control_character['escape']}[31m",
+        "fg_green": f"{_name_to_control_character['escape']}[32m",
+        "fg_yellow": f"{_name_to_control_character['escape']}[33m",
+        "fg_blue": f"{_name_to_control_character['escape']}[34m",
+        "fg_purple": f"{_name_to_control_character['escape']}[35m",
+        "fg_cyan": f"{_name_to_control_character['escape']}[36m",
+        "fg_gray": f"{_name_to_control_character['escape']}[37m",
+        "bold": f"{_name_to_control_character['escape']}[1m",
+        "faint": f"{_name_to_control_character['escape']}[2m",
+        "italics": f"{_name_to_control_character['escape']}[3m", # Does not show in CMD.exe
+        "underline": f"{_name_to_control_character['escape']}[4m",
+        "cursor_left": f"{_name_to_control_character['escape']}[1D",
+        "cursor_right": f"{_name_to_control_character['escape']}[1C",
+        "cursor_up": f"{_name_to_control_character['escape']}[1A",
+        "cursor_down": f"{_name_to_control_character['escape']}[1B",
+        "reset_attributes": f"{_name_to_control_character['escape']}[0m",
+        "standout": f"",
+        "down": f"",
+        "up": f"",
+    }
     _codenames = tuple(_codename_to_capname.keys())
     _codename_to_terminal_code = None  # type: Optional[Dict[str, str]]
     _terminal_code_to_codename = None  # type: Optional[Dict[str, str]]
