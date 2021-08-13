@@ -1479,10 +1479,12 @@ class TerminalMenu:
                 else:
                     self._paint_before_next_read = True
 
-            signal.signal(signal.SIGWINCH, handle_sigwinch)
+            if not WINDOWS:
+                signal.signal(signal.SIGWINCH, handle_sigwinch)
 
         def reset_signal_handling() -> None:
-            signal.signal(signal.SIGWINCH, signal.SIG_DFL)
+            if not WINDOWS:
+                signal.signal(signal.SIGWINCH, signal.SIG_DFL)
 
         def remove_letter_keys(menu_action_to_keys: Dict[str, Set[Optional[str]]]) -> None:
             letter_keys = frozenset(string.ascii_lowercase) | frozenset(" ")
