@@ -33,8 +33,7 @@ from typing import (
     cast,
 )
 
-if platform.system() == "Windows":
-    WINDOWS = True
+WINDOWS = platform.system() == "Windows"
 
 try:
     if WINDOWS:
