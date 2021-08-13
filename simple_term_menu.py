@@ -37,8 +37,10 @@ if platform.system() == "Windows":
     WINDOWS = True
 
 try:
-
-    import termios
+    if WINDOWS:
+        pass
+    else:
+        import termios
 except ImportError as e:
     raise NotImplementedError('"{}" is currently not supported.'.format(platform.system())) from e
 
