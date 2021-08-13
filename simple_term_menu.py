@@ -969,10 +969,11 @@ class TerminalMenu:
         assert self._codename_to_terminal_code is not None
         assert self._stdin is not None
         assert self._stdout is not None
-        assert self._old_term is not None
-        termios.tcsetattr(
-            self._stdout.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._old_term)
-        )
+        if not WINDOWS:
+            assert self._old_term is not None
+            termios.tcsetattr(
+                self._stdout.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._old_term)
+            )
         self._stdout.write(self._codename_to_terminal_code["cursor_visible"])
         self._stdout.write(self._codename_to_terminal_code["exit_application_mode"])
         if self._clear_screen:
