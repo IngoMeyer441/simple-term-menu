@@ -962,10 +962,10 @@ class TerminalMenu:
             # TODO: Proper implementation - https://bugs.python.org/issue30075
             os.system('')
         if self._clear_screen:
-            self._tty_out.write(self._codename_to_terminal_code["clear"])
+            self._stdout.write(self._codename_to_terminal_code["clear"])
             if WINDOWS:
                 # Move cursor from bottom left to top left
-                self._tty_out.write(self._get_terminal_size_windows()[1] * self._codename_to_terminal_code["cursor_up"])
+                self._stdout.write(self._get_windows_terminal_size()[1] * self._codename_to_terminal_code["cursor_up"])
 
     def _reset_term(self) -> None:
         # pylint: disable=unsubscriptable-object
