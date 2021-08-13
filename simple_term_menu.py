@@ -139,7 +139,7 @@ def static_variables(**variables: Any) -> Callable[[Callable[..., Any]], Callabl
 
 
 class BoxDrawingCharacters:
-    if getlocale()[1] == "UTF-8":
+    if getlocale()[1] in ["UTF-8", "1252"]:
         # Unicode box characters
         horizontal = "─"
         vertical = "│"
