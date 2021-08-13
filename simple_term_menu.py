@@ -113,6 +113,9 @@ def get_locale() -> str:
 
 
 def wcswidth(text: str) -> int:
+    if WINDOWS:
+        # TODO: Implement Windows compatible solution for wcswidth
+        return len(text)
     if not hasattr(wcswidth, "libc"):
         if platform.system() == "Darwin":
             wcswidth.libc = ctypes.cdll.LoadLibrary("libSystem.dylib")  # type: ignore
