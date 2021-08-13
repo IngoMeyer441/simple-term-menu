@@ -529,7 +529,7 @@ class TerminalMenu:
     }
     # https://docs.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
     _codename_to_ansi_code = {
-        "clear": f"{_name_to_control_character['escape']}2J",
+        "clear": f"{_name_to_control_character['escape']}[2J",
         "delete_line": f"{_name_to_control_character['escape']}[1M",
         "cursor_invisible": f"{_name_to_control_character['escape']}[?25l",
         "cursor_visible": f"{_name_to_control_character['escape']}[?25h",
