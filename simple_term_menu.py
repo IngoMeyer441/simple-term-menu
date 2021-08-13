@@ -978,7 +978,8 @@ class TerminalMenu:
                 self._stdout.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._old_term)
             )
         self._stdout.write(self._codename_to_terminal_code["cursor_visible"])
-        self._stdout.write(self._codename_to_terminal_code["exit_application_mode"])
+        if not WINDOWS:
+            self._stdout.write(self._codename_to_terminal_code["exit_application_mode"])
         if self._clear_screen:
             self._stdout.write(self._codename_to_terminal_code["clear"])
         self._stdin.close()
