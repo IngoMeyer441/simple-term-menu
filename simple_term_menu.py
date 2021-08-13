@@ -37,6 +37,7 @@ if platform.system() == "Windows":
     WINDOWS = True
 
 try:
+
     import termios
 except ImportError as e:
     raise NotImplementedError('"{}" is currently not supported.'.format(platform.system())) from e
@@ -876,7 +877,7 @@ class TerminalMenu:
 
     @classmethod
     def _query_ansi_code(cls, codename: str) -> str:
-        return _codename_to_ansi_code[codename]
+        return cls._codename_to_ansi_code[codename]
 
     @classmethod
     def _query_terminfo_database(cls, codename: str) -> str:
