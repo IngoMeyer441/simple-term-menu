@@ -559,8 +559,8 @@ class TerminalMenu:
         "cursor_down": f"{_name_to_control_character['escape']}[1B",
         "reset_attributes": f"{_name_to_control_character['escape']}[0m",
         "standout": f"",
-        "down": f"",
-        "up": f"",
+        "up": f"{_name_to_control_character['escape']}[A",
+        "down": f"{_name_to_control_character['escape']}[B",
     }
     if WINDOWS:
         _codenames = tuple(_codename_to_ansi_code.keys())
