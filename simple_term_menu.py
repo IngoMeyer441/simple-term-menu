@@ -38,7 +38,7 @@ if platform.system() == "Windows":
 
 try:
     if WINDOWS:
-        pass
+        import msvcrt
     else:
         import termios
 except ImportError as e:
@@ -1460,7 +1460,14 @@ class TerminalMenu:
             self._paint_menu()
             self._paint_before_next_read = False
         # blocks until any amount of bytes is available
-        code = os.read(self._stdin.fileno(), 80).decode("ascii", errors="ignore")
+        if WINDOWS:
+            # TODO: Implement solution to catch Arrow, Ctrl and Alt-keys
+            # https://stackoverflow.com/a/12178312
+            code = '\xe0'
+            while code == '\xe0' or code == '\x00':
+                code = msvcrt.getch().decode("ascii", errors="ignore")
+        else:
+            code = os.read(self._stdin.fileno(), 80).decode("ascii", errors="ignore")
         self._reading_next_key = False
         if code in self._terminal_code_to_codename:
             return self._terminal_code_to_codename[code]
