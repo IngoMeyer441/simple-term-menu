@@ -953,8 +953,9 @@ class TerminalMenu:
             termios.tcsetattr(
                 self._stdin.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._new_term)
             )
-        # Enter terminal application mode to get expected escape codes for arrow keys
-        self._stdout.write(self._codename_to_terminal_code["enter_application_mode"])
+        if not WINDOWS:
+            # Enter terminal application mode to get expected escape codes for arrow keys
+            self._stdout.write(self._codename_to_terminal_code["enter_application_mode"])
         self._stdout.write(self._codename_to_terminal_code["cursor_invisible"])
         if WINDOWS:
             # Enable VT100 mode in CMD.exe
