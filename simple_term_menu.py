@@ -43,7 +43,7 @@ __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2021 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (1, 3, 0)
+__version_info__ = (1, 4, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -540,6 +540,7 @@ class TerminalMenu:
         multi_select_cursor: str = DEFAULT_MULTI_SELECT_CURSOR,
         multi_select_cursor_brackets_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_BRACKETS_STYLE,
         multi_select_cursor_style: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_CURSOR_STYLE,
+        multi_select_empty_ok: bool = False,
         multi_select_keys: Optional[Iterable[str]] = DEFAULT_MULTI_SELECT_KEYS,
         multi_select_select_on_accept: bool = DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT,
         preselected_entries: Optional[Iterable[Union[str, int]]] = None,
@@ -642,6 +643,7 @@ class TerminalMenu:
         self._clear_menu_on_exit = clear_menu_on_exit
         self._clear_screen = clear_screen
         self._cycle_cursor = cycle_cursor
+        self._multi_select_empty_ok = multi_select_empty_ok
         self._exit_on_shortcut = exit_on_shortcut
         self._menu_cursor = menu_cursor if menu_cursor is not None else ""
         self._menu_cursor_style = tuple(menu_cursor_style) if menu_cursor_style is not None else ()
@@ -1448,7 +1450,9 @@ class TerminalMenu:
                         self._selection.toggle(self._view.active_menu_index)
                 elif next_key in current_menu_action_to_keys["accept"]:
                     if self._view.active_menu_index is not None:
-                        if self._multi_select_select_on_accept or not self._selection:
+                        if self._multi_select_select_on_accept or (
+                            not self._selection and self._multi_select_empty_ok is False
+                        ):
                             self._selection.add(self._view.active_menu_index)
                     self._chosen_accept_key = next_key
                     break
@@ -1631,6 +1635,12 @@ def get_argumentparser() -> argparse.ArgumentParser:
             "do not select the currently highlighted menu item when the accept key is pressed "
             "(it is still selected if no other item was selected before)"
         ),
+    )
+    parser.add_argument(
+        "--multi-select-empty-ok",
+        action="store_true",
+        dest="multi_select_empty_ok",
+        help=("when used together with --multi-select-no-select-on-accept allows returning no selection at all"),
     )
     parser.add_argument(
         "-p",
@@ -1873,6 +1883,7 @@ def main() -> None:
             multi_select_cursor=args.multi_select_cursor,
             multi_select_cursor_brackets_style=args.multi_select_cursor_brackets_style,
             multi_select_cursor_style=args.multi_select_cursor_style,
+            multi_select_empty_ok=args.multi_select_empty_ok,
             multi_select_keys=args.multi_select_keys,
             multi_select_select_on_accept=args.multi_select_select_on_accept,
             preselected_entries=args.preselected,
