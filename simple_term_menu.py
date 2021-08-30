@@ -562,7 +562,7 @@ class TerminalMenu:
         status_bar: Optional[Union[str, Iterable[str], Callable[[str], str]]] = None,
         status_bar_below_preview: bool = DEFAULT_STATUS_BAR_BELOW_PREVIEW,
         status_bar_style: Optional[Iterable[str]] = DEFAULT_STATUS_BAR_STYLE,
-        title: Optional[Union[str, Iterable[str]]] = None,
+        title: Optional[Union[str, Iterable[str]]] = None
     ):
         def extract_shortcuts_menu_entries_and_preview_arguments(
             entries: Iterable[str],
