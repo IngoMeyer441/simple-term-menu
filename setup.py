@@ -5,7 +5,7 @@ from distutils.cmd import Command
 from tempfile import TemporaryDirectory
 from typing import List, Optional, Tuple, cast
 
-from setuptools import setup
+from setuptools import find_packages, setup
 
 
 class PyinstallerCommand(Command):
@@ -28,7 +28,7 @@ class PyinstallerCommand(Command):
                     """
 #!/usr/bin/env python3
 
-from simple_term_menu import main
+from simple_term_menu.cli import main
 
 
 if __name__ == "__main__":
@@ -47,7 +47,7 @@ if __name__ == "__main__":
             )
 
 
-def get_version_from_pyfile(version_file: str = "simple_term_menu.py") -> str:
+def get_version_from_pyfile(version_file: str = "simple_term_menu/_version.py") -> str:
     file_globals = runpy.run_path(version_file)
     return cast(str, file_globals["__version__"])
 
@@ -66,9 +66,9 @@ long_description = get_long_description_from_readme()
 setup(
     name="simple-term-menu",
     version=version,
-    py_modules=["simple_term_menu"],
+    packages=find_packages(),
     python_requires="~=3.5",
-    entry_points={"console_scripts": ["simple-term-menu = simple_term_menu:main"]},
+    entry_points={"console_scripts": ["simple-term-menu = simple_term_menu.cli:main"]},
     cmdclass={"bdist_pyinstaller": PyinstallerCommand},
     author="Ingo Meyer",
     author_email="i.meyer@fz-juelich.de",
