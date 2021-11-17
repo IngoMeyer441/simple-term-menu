@@ -44,7 +44,7 @@ repos:
   - id: gitlint
     args: [
       '--ignore=body-is-missing,title-must-not-contain-word',
-      '--msg-filename'
+      '--msg-filename',
     ]
 - repo: https://github.com/igorshubovych/markdownlint-cli
   rev: v0.27.1
@@ -61,9 +61,12 @@ repos:
   rev: 0.4.0
   hooks:
   - id: check-jsonschema
-    name: "Validate GitLab CI configuration"
+    name: 'Validate GitLab CI configuration'
     files: ^\.gitlab-ci.yml
-    args: ["--schemafile", "https://json.schemastore.org/gitlab-ci"]
+    args: [
+      '--schemafile',
+      'https://gitlab.com/gitlab-org/gitlab/-/raw/master/app/assets/javascripts/editor/schema/ci.json',
+    ]
 - repo: https://github.com/sirosen/check-jsonschema
   rev: 0.4.0
   hooks:
