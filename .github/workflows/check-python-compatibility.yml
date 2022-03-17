@@ -1,4 +1,4 @@
-name: pre-commit checks
+name: check Python 3.5 compatibility
 on: [push, pull_request]
 jobs:
   pre-commit:
