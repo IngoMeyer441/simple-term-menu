@@ -38,10 +38,19 @@ install-pre-commit: check-git check-python
 check: install-pre-commit
 	@TMP_PRECOMMIT_DIR="$$(mktemp -d 2>/dev/null || mktemp -d -t 'tmp' 2>/dev/null)" && \
 	git log -1 --pretty=%B > "$${TMP_PRECOMMIT_DIR}/commit_msg" && \
-	"$(PRECOMMIT_ENV)/bin/pre-commit" run --all-files --hook-stage commit && \
-	"$(PRECOMMIT_ENV)/bin/pre-commit" run --all-files --hook-stage commit-msg \
+	"$(PRECOMMIT_ENV)/bin/pre-commit" run \
+		--all-files \
+		--show-diff-on-failure \
+		--hook-stage commit && \
+	"$(PRECOMMIT_ENV)/bin/pre-commit" run \
+		--all-files \
+		--show-diff-on-failure \
+		--hook-stage commit-msg \
 		--commit-msg-filename "$${TMP_PRECOMMIT_DIR}/commit_msg" && \
-	"$(PRECOMMIT_ENV)/bin/pre-commit" run --all-files --hook-stage post-commit; \
+	"$(PRECOMMIT_ENV)/bin/pre-commit" run \
+		--all-files \
+		--show-diff-on-failure \
+		--hook-stage post-commit; \
 	RETURN_CODE="$$?"; \
 	rm -rf "$${TMP_PRECOMMIT_DIR}"; \
 	exit "$${RETURN_CODE}"
