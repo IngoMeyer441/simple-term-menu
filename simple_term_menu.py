@@ -276,7 +276,7 @@ class TerminalMenu:
             selection: "TerminalMenu.Selection",
             viewport: "TerminalMenu.Viewport",
             cycle_cursor: bool = True,
-            skip_indices: List[int] = []
+            skip_indices: List[int] = [],
         ):
             self._menu_entries = list(menu_entries)
             self._search = search
@@ -590,7 +590,7 @@ class TerminalMenu:
             for idx, entry in enumerate(entries):
                 if entry is None and skip_empty_entries:
                     shortcut_keys.append(None)
-                    menu_entries.append('')
+                    menu_entries.append("")
                     preview_arguments.append(None)
                     skip_indices.append(idx)
                 else:
@@ -660,7 +660,7 @@ class TerminalMenu:
             self._menu_entries,
             self._shortcut_keys,
             self._preview_arguments,
-            self._skip_indices
+            self._skip_indices,
         ) = extract_shortcuts_menu_entries_and_preview_arguments(menu_entries)
         self._shortcuts_defined = any(key is not None for key in self._shortcut_keys)
         self._accept_keys = tuple(accept_keys)
@@ -749,12 +749,7 @@ class TerminalMenu:
             0,
         )
         self._view = self.View(
-            self._menu_entries,
-            self._search,
-            self._selection,
-            self._viewport,
-            self._cycle_cursor,
-            self._skip_indices
+            self._menu_entries, self._search, self._selection, self._viewport, self._cycle_cursor, self._skip_indices
         )
         if cursor_index and 0 < cursor_index < len(self._menu_entries):
             self._view.active_menu_index = cursor_index
@@ -1343,7 +1338,7 @@ class TerminalMenu:
             for displayed_index, _, _ in self._view:
                 self._tty_out.write("\r" + cursor_width * self._codename_to_terminal_code["cursor_right"])
                 if displayed_index in self._skip_indices:
-                    self._tty_out.write('')
+                    self._tty_out.write("")
                 else:
                     if displayed_index in displayed_selected_indices:
                         self._tty_out.write(checked_multi_select_cursor)
@@ -1854,7 +1849,7 @@ def parse_arguments() -> AttributeDict:
     if not args.print_version and not args.entries:
         raise NoMenuEntriesError("No menu entries given!")
     elif args.skip_empty_entries:
-        args.entries = [entry if entry != 'None' else None for entry in args.entries]
+        args.entries = [entry if entry != "None" else None for entry in args.entries]
     if args.cursor_style != "":
         args.cursor_style = tuple(args.cursor_style.split(","))
     else:
@@ -1955,7 +1950,7 @@ def main() -> None:
             status_bar_below_preview=args.status_bar_below_preview,
             status_bar_style=args.status_bar_style,
             title=args.title,
-            skip_empty_entries=args.skip_empty_entries
+            skip_empty_entries=args.skip_empty_entries,
         )
     except (InvalidParameterCombinationError, InvalidStyleError, UnknownMenuEntryError) as e:
         print(str(e), file=sys.stderr)
