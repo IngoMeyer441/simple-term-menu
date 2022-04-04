@@ -383,6 +383,26 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
 
   ![screenshot_preview_tmux_sessions](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/preview_tmux_sessions.png)
 
+### Skipping empty entries
+
+Use the constructor parameter `skip_empty_entries` or the flag `--skip-empty-entries` to interpret a `None` value
+in the menu entries as an empty menu entry (will be skipped when iterating over the entries)
+
+```python
+from simple_term_menu import TerminalMenu
+
+def main():
+    options = ["entry 1", "entry 2", None, "add", "edit"]
+    terminal_menu = TerminalMenu(options, skip_empty_entries=True)
+    menu_entry_index = terminal_menu.show()
+    print(f"You have selected {options[menu_entry_index]}!")
+
+if __name__ == "__main__":
+    main()
+```
+
+![screenshot_skip_empty_entries](https://raw.githubusercontent.com/IngoMeyer441/simple-term-menu/master/skip_empty_entries.png)
+
 ### Localization / Text modification
 
 Use the constructor parameters

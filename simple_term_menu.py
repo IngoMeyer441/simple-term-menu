@@ -582,13 +582,13 @@ class TerminalMenu:
             separator_pattern = re.compile(r"([^\\])\|")
             escaped_separator_pattern = re.compile(r"\\\|")
             menu_entry_pattern = re.compile(r"^(?:\[(\S)\]\s*)?([^\x1F]+)(?:\x1F([^\x1F]*))?")
-            shortcut_keys: List[Union[None, str]] = []
-            menu_entries: List[str] = []
-            preview_arguments: List[Union[None, str]] = []
-            skip_indices: List[int] = []
+            shortcut_keys = []  # type: List[Union[None, str]]
+            menu_entries = []  # type: List[str]
+            preview_arguments = []  # type: List[Union[None, str]]
+            skip_indices = []  # type: List[int]
 
             for idx, entry in enumerate(entries):
-                if (entry is None or len(entry) == 0) and skip_empty_entries:
+                if entry is None and skip_empty_entries:
                     shortcut_keys.append(None)
                     menu_entries.append('')
                     preview_arguments.append(None)
@@ -1824,6 +1824,12 @@ def get_argumentparser() -> argparse.ArgumentParser:
         "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
     )
     parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
+    parser.add_argument(
+        "--skip-empty-entries",
+        action="store_true",
+        dest="skip_empty_entries",
+        help="Interpret None in menu entries as an empty menu entry",
+    )
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "-r",
@@ -1847,6 +1853,8 @@ def parse_arguments() -> AttributeDict:
     args = AttributeDict({key: value for key, value in vars(parser.parse_args()).items()})
     if not args.print_version and not args.entries:
         raise NoMenuEntriesError("No menu entries given!")
+    elif args.skip_empty_entries:
+        args.entries = [entry if entry != 'None' else None for entry in args.entries]
     if args.cursor_style != "":
         args.cursor_style = tuple(args.cursor_style.split(","))
     else:
@@ -1947,6 +1955,7 @@ def main() -> None:
             status_bar_below_preview=args.status_bar_below_preview,
             status_bar_style=args.status_bar_style,
             title=args.title,
+            skip_empty_entries=args.skip_empty_entries
         )
     except (InvalidParameterCombinationError, InvalidStyleError, UnknownMenuEntryError) as e:
         print(str(e), file=sys.stderr)
