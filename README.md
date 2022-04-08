@@ -385,15 +385,16 @@ Preview commands are allowed to generate [ANSI escape color codes](https://en.wi
 
 ### Skipping empty entries
 
-Use the constructor parameter `skip_empty_entries` or the flag `--skip-empty-entries` to interpret a `None` value
-in the menu entries as an empty menu entry (will be skipped when iterating over the entries)
+Use the constructor parameter `skip_empty_entries` or the flag `--skip-empty-entries` to interpret an empty string value
+in the menu entries as an empty menu entry (will be skipped when iterating over the entries). A `None` value is always
+considered as an empty menu entry independently from the `skip_empty_entries` parameter.
 
 ```python
 from simple_term_menu import TerminalMenu
 
-def main():
-    options = ["entry 1", "entry 2", None, "add", "edit"]
-    terminal_menu = TerminalMenu(options, skip_empty_entries=True)
+def main():                                                         # Or use `None` instead of `""`:
+    options = ["entry 1", "entry 2", "", "add", "edit"]             # ["entry 1", "entry 2", None, "add", "edit"]
+    terminal_menu = TerminalMenu(options, skip_empty_entries=True)  # TerminalMenu(options)
     menu_entry_index = terminal_menu.show()
     print(f"You have selected {options[menu_entry_index]}!")
 
@@ -441,8 +442,8 @@ usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [--multi-select-cursor-style MULTI_SELECT_CURSOR_STYLE]
                         [--multi-select-keys MULTI_SELECT_KEYS]
                         [--multi-select-no-select-on-accept]
-                        [-p PREVIEW_COMMAND] [--no-preview-border]
-                        [--preview-size PREVIEW_SIZE]
+                        [--multi-select-empty-ok] [-p PREVIEW_COMMAND]
+                        [--no-preview-border] [--preview-size PREVIEW_SIZE]
                         [--preview-title PREVIEW_TITLE]
                         [--search-highlight-style SEARCH_HIGHLIGHT_STYLE]
                         [--search-key SEARCH_KEY]
@@ -453,7 +454,8 @@ usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [--show-search-hint]
                         [--show-search-hint-text SHOW_SEARCH_HINT_TEXT]
                         [--show-shortcut-hints]
-                        [--show-shortcut-hints-in-title] [-b STATUS_BAR] [-d]
+                        [--show-shortcut-hints-in-title]
+                        [--skip-empty-entries] [-b STATUS_BAR] [-d]
                         [--status-bar-style STATUS_BAR_STYLE] [--stdout]
                         [-t TITLE] [-V]
                         [-r PRESELECTED_ENTRIES | -R PRESELECTED_INDICES]
@@ -464,7 +466,7 @@ simple-term-menu creates simple interactive menus in the terminal and returns th
 positional arguments:
   entries               the menu entries to show
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -s, --case-sensitive  searches are case sensitive
   -X, --no-clear-menu-on-exit
@@ -499,6 +501,9 @@ optional arguments:
                         do not select the currently highlighted menu item when
                         the accept key is pressed (it is still selected if no
                         other item was selected before)
+  --multi-select-empty-ok
+                        when used together with --multi-select-no-select-on-
+                        accept allows returning no selection at all
   -p PREVIEW_COMMAND, --preview PREVIEW_COMMAND
                         Command to generate a preview for the selected menu
                         entry. "{}" can be used as placeholder for the menu
@@ -537,6 +542,8 @@ optional arguments:
                         show shortcut hints in the status bar
   --show-shortcut-hints-in-title
                         show shortcut hints in the menu title
+  --skip-empty-entries  Interpret an empty string in menu entries as an empty
+                        menu entry
   -b STATUS_BAR, --status-bar STATUS_BAR
                         status bar text
   -d, --status-bar-below-preview

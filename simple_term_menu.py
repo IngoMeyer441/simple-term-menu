@@ -556,7 +556,7 @@ class TerminalMenu:
         multi_select_select_on_accept: bool = DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT,
         preselected_entries: Optional[Iterable[Union[str, int]]] = None,
         preview_border: bool = DEFAULT_PREVIEW_BORDER,
-        preview_command: Optional[Union[str, Callable[[Optional[str]], str]]] = None,
+        preview_command: Optional[Union[str, Callable[[str], str]]] = None,
         preview_size: float = DEFAULT_PREVIEW_SIZE,
         preview_title: str = DEFAULT_PREVIEW_TITLE,
         search_case_sensitive: bool = DEFAULT_SEARCH_CASE_SENSITIVE,
@@ -570,25 +570,25 @@ class TerminalMenu:
         show_search_hint_text: Optional[str] = None,
         show_shortcut_hints: bool = DEFAULT_SHOW_SHORTCUT_HINTS,
         show_shortcut_hints_in_status_bar: bool = DEFAULT_SHOW_SHORTCUT_HINTS_IN_STATUS_BAR,
+        skip_empty_entries: bool = False,
         status_bar: Optional[Union[str, Iterable[str], Callable[[str], str]]] = None,
         status_bar_below_preview: bool = DEFAULT_STATUS_BAR_BELOW_PREVIEW,
         status_bar_style: Optional[Iterable[str]] = DEFAULT_STATUS_BAR_STYLE,
-        title: Optional[Union[str, Iterable[str]]] = None,
-        skip_empty_entries: bool = False
+        title: Optional[Union[str, Iterable[str]]] = None
     ):
         def extract_shortcuts_menu_entries_and_preview_arguments(
             entries: Iterable[str],
-        ) -> Tuple[List[str], List[Union[None, str]], List[Union[None, str]], List[int]]:
+        ) -> Tuple[List[str], List[Optional[str]], List[Optional[str]], List[int]]:
             separator_pattern = re.compile(r"([^\\])\|")
             escaped_separator_pattern = re.compile(r"\\\|")
             menu_entry_pattern = re.compile(r"^(?:\[(\S)\]\s*)?([^\x1F]+)(?:\x1F([^\x1F]*))?")
-            shortcut_keys = []  # type: List[Union[None, str]]
+            shortcut_keys = []  # type: List[Optional[str]]
             menu_entries = []  # type: List[str]
-            preview_arguments = []  # type: List[Union[None, str]]
+            preview_arguments = []  # type: List[Optional[str]]
             skip_indices = []  # type: List[int]
 
             for idx, entry in enumerate(entries):
-                if entry is None and skip_empty_entries:
+                if entry is None or (entry == "" and skip_empty_entries):
                     shortcut_keys.append(None)
                     menu_entries.append("")
                     preview_arguments.append(None)
@@ -639,7 +639,7 @@ class TerminalMenu:
             title_or_status_bar: Optional[Union[str, Iterable[str]]],
             show_shortcut_hints: bool,
             menu_entries: Iterable[str],
-            shortcut_keys: Iterable[Union[None, str]],
+            shortcut_keys: Iterable[Optional[str]],
             shortcut_hints_in_parentheses: bool,
         ) -> Tuple[str, ...]:
             if title_or_status_bar is None:
@@ -768,7 +768,7 @@ class TerminalMenu:
     @staticmethod
     def _get_shortcut_hints_line(
         menu_entries: Iterable[str],
-        shortcut_keys: Iterable[Union[None, str]],
+        shortcut_keys: Iterable[Optional[str]],
         shortcut_hints_in_parentheses: bool,
     ) -> Optional[str]:
         shortcut_hints_line = ", ".join(
@@ -1140,7 +1140,7 @@ class TerminalMenu:
                             e.stderr.decode(encoding=self._user_locale, errors="replace").strip()
                         ) from e
                 else:
-                    preview_string = self._preview_command(preview_argument)
+                    preview_string = self._preview_command(preview_argument) if preview_argument is not None else ""
                 return preview_string
 
             @static_variables(
@@ -1339,12 +1339,10 @@ class TerminalMenu:
                 self._tty_out.write("\r" + cursor_width * self._codename_to_terminal_code["cursor_right"])
                 if displayed_index in self._skip_indices:
                     self._tty_out.write("")
+                elif displayed_index in displayed_selected_indices:
+                    self._tty_out.write(checked_multi_select_cursor)
                 else:
-                    if displayed_index in displayed_selected_indices:
-                        self._tty_out.write(checked_multi_select_cursor)
-                    else:
-                        self._tty_out.write(unchecked_multi_select_cursor)
-
+                    self._tty_out.write(unchecked_multi_select_cursor)
                 if displayed_index < self._viewport.upper_index:
                     self._tty_out.write(self._codename_to_terminal_code["cursor_down"])
             self._tty_out.write("\r")
@@ -1785,6 +1783,12 @@ def get_argumentparser() -> argparse.ArgumentParser:
         help="show shortcut hints in the menu title",
     )
     parser.add_argument(
+        "--skip-empty-entries",
+        action="store_true",
+        dest="skip_empty_entries",
+        help="Interpret an empty string in menu entries as an empty menu entry",
+    )
+    parser.add_argument(
         "-b",
         "--status-bar",
         action="store",
@@ -1819,12 +1823,6 @@ def get_argumentparser() -> argparse.ArgumentParser:
         "-V", "--version", action="store_true", dest="print_version", help="print the version number and exit"
     )
     parser.add_argument("entries", action="store", nargs="*", help="the menu entries to show")
-    parser.add_argument(
-        "--skip-empty-entries",
-        action="store_true",
-        dest="skip_empty_entries",
-        help="Interpret None in menu entries as an empty menu entry",
-    )
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "-r",
@@ -1848,7 +1846,7 @@ def parse_arguments() -> AttributeDict:
     args = AttributeDict({key: value for key, value in vars(parser.parse_args()).items()})
     if not args.print_version and not args.entries:
         raise NoMenuEntriesError("No menu entries given!")
-    elif args.skip_empty_entries:
+    if args.skip_empty_entries:
         args.entries = [entry if entry != "None" else None for entry in args.entries]
     if args.cursor_style != "":
         args.cursor_style = tuple(args.cursor_style.split(","))
@@ -1946,11 +1944,11 @@ def main() -> None:
             show_search_hint_text=args.show_search_hint_text,
             show_shortcut_hints=args.show_shortcut_hints,
             show_shortcut_hints_in_status_bar=args.show_shortcut_hints_in_status_bar,
+            skip_empty_entries=args.skip_empty_entries,
             status_bar=args.status_bar,
             status_bar_below_preview=args.status_bar_below_preview,
             status_bar_style=args.status_bar_style,
             title=args.title,
-            skip_empty_entries=args.skip_empty_entries,
         )
     except (InvalidParameterCombinationError, InvalidStyleError, UnknownMenuEntryError) as e:
         print(str(e), file=sys.stderr)
