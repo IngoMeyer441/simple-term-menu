@@ -67,6 +67,7 @@ setup(
     name="simple-term-menu",
     version=version,
     py_modules=["simple_term_menu"],
+    include_package_data=True,
     python_requires="~=3.5",
     entry_points={"console_scripts": ["simple-term-menu = simple_term_menu:main"]},
     cmdclass={"bdist_pyinstaller": PyinstallerCommand},
