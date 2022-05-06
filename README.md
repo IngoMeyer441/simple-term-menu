@@ -456,6 +456,7 @@ usage: simple-term-menu [-h] [-s] [-X] [-l] [--cursor CURSOR]
                         [--show-shortcut-hints]
                         [--show-shortcut-hints-in-title]
                         [--skip-empty-entries] [-b STATUS_BAR] [-d]
+                        [--explode-on-interrupt]
                         [--status-bar-style STATUS_BAR_STYLE] [--stdout]
                         [-t TITLE] [-V]
                         [-r PRESELECTED_ENTRIES | -R PRESELECTED_INDICES]
@@ -544,6 +545,8 @@ options:
                         show shortcut hints in the menu title
   --skip-empty-entries  Interpret an empty string in menu entries as an empty
                         menu entry
+  --explode-on-interrupt Enabling this will make the menu raise a
+                        KeyboardInterrupt rather than quitting
   -b STATUS_BAR, --status-bar STATUS_BAR
                         status bar text
   -d, --status-bar-below-preview
