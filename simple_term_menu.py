@@ -559,6 +559,7 @@ class TerminalMenu:
         preview_command: Optional[Union[str, Callable[[str], str]]] = None,
         preview_size: float = DEFAULT_PREVIEW_SIZE,
         preview_title: str = DEFAULT_PREVIEW_TITLE,
+        raise_error_on_interrupt: bool = False,
         search_case_sensitive: bool = DEFAULT_SEARCH_CASE_SENSITIVE,
         search_highlight_style: Optional[Iterable[str]] = DEFAULT_SEARCH_HIGHLIGHT_STYLE,
         search_key: Optional[str] = DEFAULT_SEARCH_KEY,
@@ -693,6 +694,7 @@ class TerminalMenu:
         self._preview_command = preview_command
         self._preview_size = preview_size
         self._preview_title = preview_title
+        self._raise_error_on_interrupt = raise_error_on_interrupt
         self._search_case_sensitive = search_case_sensitive
         self._search_highlight_style = tuple(search_highlight_style) if search_highlight_style is not None else ()
         self._search_key = search_key
@@ -1516,7 +1518,9 @@ class TerminalMenu:
                         # Only append `next_key` if it is a printable character and the first character is not the
                         # `search_start` key
                         self._search.search_text += next_key
-        except KeyboardInterrupt:
+        except KeyboardInterrupt as e:
+            if self._raise_error_on_interrupt:
+                raise e
             menu_was_interrupted = True
         finally:
             reset_signal_handling()

@@ -426,6 +426,8 @@ Furthermore, the `TerminalMenu` constructor takes these additional parameters to
   `True`.
 - `cursor_index`: The initially selected item index.
 - `status_bar_below_preview`: Position the status bar below the preview window (default positioning is above).
+- `raise_error_on_interrupt`: Set this to `True` to reraise Keyboard interrupts (by pressing `<Ctrl-c>`). Defaults to
+  `False`.
 
 ### Command line program
 
