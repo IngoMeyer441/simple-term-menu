@@ -428,6 +428,7 @@ Furthermore, the `TerminalMenu` constructor takes these additional parameters to
 - `status_bar_below_preview`: Position the status bar below the preview window (default positioning is above).
 - `raise_error_on_interrupt`: Set this to `True` to reraise Keyboard interrupts (by pressing `<Ctrl-c>`). Defaults to
   `False`.
+- `quit_keys`: An iterable of keys which quit the terminal menu. Defaults to `("escape", "q")`.
 
 ### Command line program
 

@@ -64,6 +64,7 @@ DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT = True
 DEFAULT_PREVIEW_BORDER = True
 DEFAULT_PREVIEW_SIZE = 0.25
 DEFAULT_PREVIEW_TITLE = "preview"
+DEFAULT_QUIT_KEYS = ("escape", "q")
 DEFAULT_SEARCH_CASE_SENSITIVE = False
 DEFAULT_SEARCH_HIGHLIGHT_STYLE = ("fg_black", "bg_yellow", "bold")
 DEFAULT_SEARCH_KEY = "/"
@@ -559,6 +560,7 @@ class TerminalMenu:
         preview_command: Optional[Union[str, Callable[[str], str]]] = None,
         preview_size: float = DEFAULT_PREVIEW_SIZE,
         preview_title: str = DEFAULT_PREVIEW_TITLE,
+        quit_keys: Iterable[str] = DEFAULT_QUIT_KEYS,
         raise_error_on_interrupt: bool = False,
         search_case_sensitive: bool = DEFAULT_SEARCH_CASE_SENSITIVE,
         search_highlight_style: Optional[Iterable[str]] = DEFAULT_SEARCH_HIGHLIGHT_STYLE,
@@ -694,6 +696,7 @@ class TerminalMenu:
         self._preview_command = preview_command
         self._preview_size = preview_size
         self._preview_title = preview_title
+        self._quit_keys = tuple(quit_keys)
         self._raise_error_on_interrupt = raise_error_on_interrupt
         self._search_case_sensitive = search_case_sensitive
         self._search_highlight_style = tuple(search_highlight_style) if search_highlight_style is not None else ()
@@ -765,6 +768,7 @@ class TerminalMenu:
         # backspace can be queried from the terminal database but is unreliable, query the terminal directly instead
         self._init_backspace_control_character()
         self._add_missing_control_characters_for_keys(self._accept_keys)
+        self._add_missing_control_characters_for_keys(self._quit_keys)
         self._init_terminal_codes()
 
     @staticmethod
@@ -1455,7 +1459,7 @@ class TerminalMenu:
                 "menu_down": set(("down", "ctrl-j", "j")),
                 "accept": set(self._accept_keys),
                 "multi_select": set(self._multi_select_keys),
-                "quit": set(("escape", "q")),
+                "quit": set(self._quit_keys),
                 "search_start": set((self._search_key,)),
                 "backspace": set(("backspace",)),
             }  # type: Dict[str, Set[Optional[str]]]
