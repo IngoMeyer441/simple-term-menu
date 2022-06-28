@@ -418,17 +418,17 @@ to modify the corresponding texts. Use the placeholder `{key}` for the search ke
 
 Furthermore, the `TerminalMenu` constructor takes these additional parameters to change the menu behavior:
 
-- `cycle_cursor`: A bool value which indicates if the menu cursor cycles when the end of the menu is reached. Defaults
-  to `True`.
-- `clear_screen`: A bool value which indicates if the screen will be cleared before the menu is shown. Defaults to
-  `False`.
 - `clear_menu_on_exit`: A bool value which indicates if the menu will be cleared after the `show` method. Defaults to
   `True`.
+- `clear_screen`: A bool value which indicates if the screen will be cleared before the menu is shown. Defaults to
+  `False`.
 - `cursor_index`: The initially selected item index.
-- `status_bar_below_preview`: Position the status bar below the preview window (default positioning is above).
+- `cycle_cursor`: A bool value which indicates if the menu cursor cycles when the end of the menu is reached. Defaults
+  to `True`.
+- `quit_keys`: An iterable of keys which quit the terminal menu. Defaults to `("escape", "q")`.
 - `raise_error_on_interrupt`: Set this to `True` to reraise Keyboard interrupts (by pressing `<Ctrl-c>`). Defaults to
   `False`.
-- `quit_keys`: An iterable of keys which quit the terminal menu. Defaults to `("escape", "q")`.
+- `status_bar_below_preview`: Position the status bar below the preview window (default positioning is above).
 
 ### Command line program
 
