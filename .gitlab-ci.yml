@@ -8,13 +8,27 @@ pre-commit:
   stage: check
   image: python:3
   before_script:
-  - pip install "pre-commit==2.13.0"
+  - pip install "pre-commit==2.17.0"
   script:
   - TMP_MSG_FILE="$(mktemp)"
   - git log -1 --pretty=%B > "${TMP_MSG_FILE}"
-  - pre-commit run --all-files --color=always --hook-stage commit &&
-    pre-commit run --all-files --color=always --hook-stage commit-msg --commit-msg-filename "${TMP_MSG_FILE}" &&
-    pre-commit run --all-files --color=always --hook-stage post-commit || {
+  - pre-commit run
+      --all-files
+      --color=always
+      --show-diff-on-failure
+      --hook-stage commit &&
+    pre-commit run
+      --all-files
+      --color=always
+      --show-diff-on-failure
+      --hook-stage commit-msg
+      --commit-msg-filename "${TMP_MSG_FILE}" &&
+    pre-commit run
+      --all-files
+      --color=always
+      --show-diff-on-failure
+      --hook-stage post-commit ||
+    {
       >&2 echo "pre-commit checks failed. Please consider installing pre-commit";
       >&2 echo "hooks in your local Git clone by running \`make git-hooks-install\`.";
       exit 1;

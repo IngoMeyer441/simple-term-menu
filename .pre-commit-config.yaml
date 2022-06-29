@@ -2,7 +2,7 @@ default_stages: ['commit']
 repos:
 # pre-commit repo:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.0.1
+  rev: v4.1.0
   hooks:
   # general hooks:
   - id: check-added-large-files  # Prevent giant files from being committed
@@ -29,56 +29,56 @@ repos:
   - id: requirements-txt-fixer  # Sorts entries in requirements.txt and removes incorrect entry `pkg-resources==0.0.0`
 # General repos:
 - repo: https://github.com/editorconfig-checker/editorconfig-checker.python
-  rev: 2.3.5
+  rev: 2.4.0
   hooks:
   - id: editorconfig-checker
     exclude_types: [markdown]
 - repo: https://github.com/IngoMeyer441/detect-direct-checkins
-  rev: v0.1.1
+  rev: v0.1.2
   hooks:
   - id: detect-direct-checkins
     args: ['--branch=master', '--allow-root']
 - repo: https://github.com/jorisroovers/gitlint
-  rev: v0.15.1
+  rev: v0.17.0
   hooks:
   - id: gitlint
     args: [
       '--ignore=body-is-missing,title-must-not-contain-word',
-      '--msg-filename'
+      '--msg-filename',
     ]
 - repo: https://github.com/igorshubovych/markdownlint-cli
-  rev: v0.27.1
+  rev: v0.31.1
   hooks:
   - id: markdownlint
 - repo: https://github.com/adrienverge/yamllint
-  rev: v1.26.1
+  rev: v1.26.3
   hooks:
   - id: yamllint
     args: [
       '--config-data={extends: default, rules: {indentation: {indent-sequences: consistent}, line-length: {max: 120}}}'
     ]
 - repo: https://github.com/sirosen/check-jsonschema
-  rev: 0.4.0
+  rev: 0.14.0
   hooks:
   - id: check-jsonschema
-    name: "Validate GitLab CI configuration"
+    name: 'Validate GitLab CI configuration'
     files: ^\.gitlab-ci.yml
-    args: ["--schemafile", "https://json.schemastore.org/gitlab-ci"]
+    args: [
+      '--schemafile',
+      'https://gitlab.com/gitlab-org/gitlab/-/raw/master/app/assets/javascripts/editor/schema/ci.json',
+    ]
 - repo: https://github.com/sirosen/check-jsonschema
-  rev: 0.4.0
+  rev: 0.14.0
   hooks:
   - id: check-github-workflows
 # Python specific repos:
 - repo: https://github.com/psf/black
-  rev: 21.6b0
+  rev: 22.3.0
   hooks:
   - id: black
-    args: [
-      '--line-length=120',
-      '--target-version=py35',
-    ]
+    args: ['--line-length=120']
 - repo: https://github.com/PyCQA/isort
-  rev: 5.9.2
+  rev: 5.10.1
   hooks:
   - id: isort
     args: [  # Arguments for `black` compatibility
@@ -90,7 +90,7 @@ repos:
       '--ensure-newline-before-comments',
     ]
 - repo: https://github.com/pycqa/flake8
-  rev: 3.9.2
+  rev: 4.0.1
   hooks:
   - id: flake8
     args: [
