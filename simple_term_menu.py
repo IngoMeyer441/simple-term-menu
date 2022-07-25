@@ -309,8 +309,8 @@ class TerminalMenu:
                     self._active_displayed_index = 0
                 self._viewport.keep_visible(self._active_displayed_index)
 
-            if self._active_displayed_index in self._skip_indices:
-                self.increment_active_index()
+                if self._displayed_index_to_menu_index[self._active_displayed_index] in self._skip_indices:
+                    self.increment_active_index()
 
         def decrement_active_index(self) -> None:
             if self._active_displayed_index is not None:
@@ -320,8 +320,8 @@ class TerminalMenu:
                     self._active_displayed_index = len(self._displayed_index_to_menu_index) - 1
                 self._viewport.keep_visible(self._active_displayed_index)
 
-            if self._active_displayed_index in self._skip_indices:
-                self.decrement_active_index()
+                if self._displayed_index_to_menu_index[self._active_displayed_index] in self._skip_indices:
+                    self.decrement_active_index()
 
         def is_visible(self, menu_index: int) -> bool:
             return menu_index in self._menu_index_to_displayed_index and (
