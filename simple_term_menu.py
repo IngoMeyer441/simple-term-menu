@@ -64,7 +64,7 @@ DEFAULT_MULTI_SELECT_SELECT_ON_ACCEPT = True
 DEFAULT_PREVIEW_BORDER = True
 DEFAULT_PREVIEW_SIZE = 0.25
 DEFAULT_PREVIEW_TITLE = "preview"
-DEFAULT_QUIT_KEYS = ("escape", "q")
+DEFAULT_QUIT_KEYS = ("escape", "q", "ctrl-g")
 DEFAULT_SEARCH_CASE_SENSITIVE = False
 DEFAULT_SEARCH_HIGHLIGHT_STYLE = ("fg_black", "bg_yellow", "bold")
 DEFAULT_SEARCH_KEY = "/"
@@ -532,8 +532,11 @@ class TerminalMenu:
         "backspace": "",  # Is assigned later in `self._init_backspace_control_character`
         "ctrl-a": "\001",
         "ctrl-e": "\005",
+        "ctrl-g": "\007",
         "ctrl-j": "\012",
         "ctrl-k": "\013",
+        "ctrl-n": "\016",
+        "ctrl-p": "\020",
         "enter": "\015",
         "escape": "\033",
         "tab": "\t",
@@ -1462,8 +1465,8 @@ class TerminalMenu:
         try:
             init_signal_handling()
             menu_action_to_keys = {
-                "menu_up": set(("up", "ctrl-k", "k")),
-                "menu_down": set(("down", "ctrl-j", "j")),
+                "menu_up": set(("up", "ctrl-k", "ctrl-p", "k")),
+                "menu_down": set(("down", "ctrl-j", "ctrl-n", "j")),
                 "menu_start": set(("home", "ctrl-a")),
                 "menu_end": set(("end", "ctrl-e")),
                 "accept": set(self._accept_keys),
