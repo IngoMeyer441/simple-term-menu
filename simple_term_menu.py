@@ -109,17 +109,25 @@ def get_locale() -> str:
 
 def wcswidth(text: str) -> int:
     if not hasattr(wcswidth, "libc"):
-        if platform.system() == "Darwin":
-            wcswidth.libc = ctypes.cdll.LoadLibrary("libSystem.dylib")  # type: ignore
-        else:
-            wcswidth.libc = ctypes.cdll.LoadLibrary("libc.so.6")  # type: ignore
-    user_locale = get_locale()
-    # First replace any null characters with the unicode replacement character (U+FFFD) since they cannot be passed
-    # in a `c_wchar_p`
-    encoded_text = text.replace("\0", "\uFFFD").encode(encoding=user_locale, errors="replace")
-    return wcswidth.libc.wcswidth(  # type: ignore
-        ctypes.c_wchar_p(encoded_text.decode(encoding=user_locale)), len(encoded_text)
-    )
+        try:
+            if platform.system() == "Darwin":
+                wcswidth.libc = ctypes.cdll.LoadLibrary("libSystem.dylib")  # type: ignore
+            else:
+                wcswidth.libc = ctypes.cdll.LoadLibrary("libc.so.6")  # type: ignore
+        except OSError:
+            wcswidth.libc = None  # type: ignore
+    if wcswidth.libc is not None:  # type: ignore
+        try:
+            user_locale = get_locale()
+            # First replace any null characters with the unicode replacement character (U+FFFD) since they cannot be
+            # passed in a `c_wchar_p`
+            encoded_text = text.replace("\0", "\uFFFD").encode(encoding=user_locale, errors="replace")
+            return wcswidth.libc.wcswidth(  # type: ignore
+                ctypes.c_wchar_p(encoded_text.decode(encoding=user_locale)), len(encoded_text)
+            )
+        except AttributeError:
+            pass
+    return len(text)
 
 
 def static_variables(**variables: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
