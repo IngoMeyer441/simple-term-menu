@@ -78,6 +78,8 @@ You can now select a menu entry with the arrow keys or `j`/`k` (vim motions) and
 cancel the menu with escape, `q` or `<Ctrl>-C`. `show` returns the selected menu entry index or `None` if the menu was
 canceled.
 
+Long menus can be scrolled quickly with the page up and page down keys (or `<Ctrl>-f` / `<Ctrl-b>` for vim users).
+
 You can pass an optional `title` to the `TerminalMenu` constructor which will be placed above the menu. `title` can be a
 simple string, a multiline string (with `\n` newlines) or a list of strings. The same applies to the `status_bar`
 parameter, which places a status bar below the menu. Moreover, you can use a callable as `status_bar` parameter which
