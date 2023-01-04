@@ -238,8 +238,7 @@ class TerminalMenu:
             return wcswidth(self._search_text) if self._search_text is not None else 0
 
     class Selection:
-        def __init__(self, num_menu_entries: int, preselected_indices: Optional[Iterable[int]] = None):
-            self._num_menu_entries = num_menu_entries
+        def __init__(self, preselected_indices: Optional[Iterable[int]] = None):
             self._selected_menu_indices = set(preselected_indices) if preselected_indices is not None else set()
 
         def clear(self) -> None:
@@ -763,7 +762,7 @@ class TerminalMenu:
             case_senitive=self._search_case_sensitive,
             show_search_hint=self._show_search_hint,
         )
-        self._selection = self.Selection(len(self._menu_entries), self._preselected_indices)
+        self._selection = self.Selection(self._preselected_indices)
         self._viewport = self.Viewport(
             len(self._menu_entries),
             len(self._title_lines),
