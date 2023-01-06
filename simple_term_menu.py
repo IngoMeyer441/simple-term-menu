@@ -43,7 +43,7 @@ __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2021 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (1, 5, 2)
+__version_info__ = (1, 6, 0)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -238,8 +238,7 @@ class TerminalMenu:
             return wcswidth(self._search_text) if self._search_text is not None else 0
 
     class Selection:
-        def __init__(self, num_menu_entries: int, preselected_indices: Optional[Iterable[int]] = None):
-            self._num_menu_entries = num_menu_entries
+        def __init__(self, preselected_indices: Optional[Iterable[int]] = None):
             self._selected_menu_indices = set(preselected_indices) if preselected_indices is not None else set()
 
         def clear(self) -> None:
@@ -306,12 +305,13 @@ class TerminalMenu:
                 for displayed_index, menu_index in enumerate(self._displayed_index_to_menu_index)
             }
             self._active_displayed_index = 0 if self._displayed_index_to_menu_index else None
+            self._viewport.num_displayed_menu_entries = len(self._displayed_index_to_menu_index)
             self._viewport.search_lines_count = self._search.occupied_lines_count
             self._viewport.keep_visible(self._active_displayed_index)
 
         def increment_active_index(self) -> None:
             if self._active_displayed_index is not None:
-                if self._active_displayed_index + 1 < len(self._displayed_index_to_menu_index):
+                if self._active_displayed_index + 1 < self._viewport.num_displayed_menu_entries:
                     self._active_displayed_index += 1
                 elif self._cycle_cursor:
                     self._active_displayed_index = 0
@@ -325,11 +325,25 @@ class TerminalMenu:
                 if self._active_displayed_index > 0:
                     self._active_displayed_index -= 1
                 elif self._cycle_cursor:
-                    self._active_displayed_index = len(self._displayed_index_to_menu_index) - 1
+                    self._active_displayed_index = self._viewport.num_displayed_menu_entries - 1
                 self._viewport.keep_visible(self._active_displayed_index)
 
                 if self._displayed_index_to_menu_index[self._active_displayed_index] in self._skip_indices:
                     self.decrement_active_index()
+
+        def page_down(self) -> None:
+            if self._active_displayed_index is None:
+                return
+            self._viewport.page_down()
+            self._active_displayed_index = min(
+                self._active_displayed_index + self._viewport.size, self._viewport.num_displayed_menu_entries - 1
+            )
+
+        def page_up(self) -> None:
+            if self._active_displayed_index is None:
+                return
+            self._viewport.page_up()
+            self._active_displayed_index = max(self._active_displayed_index - self._viewport.size, 0)
 
         def is_visible(self, menu_index: int) -> bool:
             return menu_index in self._menu_index_to_displayed_index and (
@@ -369,7 +383,7 @@ class TerminalMenu:
 
         @property
         def max_displayed_index(self) -> int:
-            return len(self._displayed_index_to_menu_index) - 1
+            return self._viewport.num_displayed_menu_entries - 1
 
         @property
         def displayed_selected_indices(self) -> List[int]:
@@ -390,20 +404,20 @@ class TerminalMenu:
     class Viewport:
         def __init__(
             self,
-            num_menu_entries: int,
+            num_displayed_menu_entries: int,
             title_lines_count: int,
             status_bar_lines_count: int,
             preview_lines_count: int,
             search_lines_count: int,
         ):
-            self._num_menu_entries = num_menu_entries
+            self._num_displayed_menu_entries = num_displayed_menu_entries
             self._title_lines_count = title_lines_count
             self._status_bar_lines_count = status_bar_lines_count
             # Use the property setter since it has some more logic
             self.preview_lines_count = preview_lines_count
             self.search_lines_count = search_lines_count
             self._num_lines = self._calculate_num_lines()
-            self._viewport = (0, min(self._num_menu_entries, self._num_lines) - 1)
+            self._viewport = (0, min(self._num_displayed_menu_entries, self._num_lines) - 1)
             self.keep_visible(cursor_position=None, refresh_terminal_size=False)
 
         def _calculate_num_lines(self) -> int:
@@ -430,11 +444,24 @@ class TerminalMenu:
                 scroll_num = cursor_position - self._viewport[1]
             self._viewport = (self._viewport[0] + scroll_num, self._viewport[1] + scroll_num)
 
+        def page_down(self) -> None:
+            self.scroll(self.size)
+
+        def page_up(self) -> None:
+            self.scroll(-self.size)
+
+        def scroll(self, number_of_lines: int) -> None:
+            if number_of_lines < 0:
+                scroll_num = max(-self._viewport[0], number_of_lines)
+            else:
+                scroll_num = min(max(0, self._num_displayed_menu_entries - self._viewport[1] - 1), number_of_lines)
+            self._viewport = (self._viewport[0] + scroll_num, self._viewport[1] + scroll_num)
+
         def update_terminal_size(self) -> None:
             num_lines = self._calculate_num_lines()
             if num_lines != self._num_lines:
                 # First let the upper index grow or shrink
-                upper_index = min(num_lines, self._num_menu_entries) - 1
+                upper_index = min(num_lines, self._num_displayed_menu_entries) - 1
                 # Then, use as much space as possible for the `lower_index`
                 lower_index = max(0, upper_index - num_lines)
                 self._viewport = (lower_index, upper_index)
@@ -457,8 +484,12 @@ class TerminalMenu:
             return self._viewport[1] - self._viewport[0] + 1
 
         @property
-        def num_menu_entries(self) -> int:
-            return self._num_menu_entries
+        def num_displayed_menu_entries(self) -> int:
+            return self._num_displayed_menu_entries
+
+        @num_displayed_menu_entries.setter
+        def num_displayed_menu_entries(self, num_displayed_menu_entries: int) -> None:
+            self._num_displayed_menu_entries = num_displayed_menu_entries
 
         @property
         def title_lines_count(self) -> int:
@@ -496,7 +527,7 @@ class TerminalMenu:
 
         @property
         def must_scroll(self) -> bool:
-            return self._num_menu_entries > self._num_lines
+            return self._num_displayed_menu_entries > self._num_lines
 
     _codename_to_capname = {
         "bg_black": "setab 0",
@@ -531,6 +562,8 @@ class TerminalMenu:
         "fg_yellow": "setaf 3",
         "home": "khome",
         "italics": "sitm",
+        "page_down": "knp",
+        "page_up": "kpp",
         "reset_attributes": "sgr0",
         "standout": "smso",
         "underline": "smul",
@@ -539,7 +572,9 @@ class TerminalMenu:
     _name_to_control_character = {
         "backspace": "",  # Is assigned later in `self._init_backspace_control_character`
         "ctrl-a": "\001",
+        "ctrl-b": "\002",
         "ctrl-e": "\005",
+        "ctrl-f": "\006",
         "ctrl-g": "\007",
         "ctrl-j": "\012",
         "ctrl-k": "\013",
@@ -763,7 +798,7 @@ class TerminalMenu:
             case_senitive=self._search_case_sensitive,
             show_search_hint=self._show_search_hint,
         )
-        self._selection = self.Selection(len(self._menu_entries), self._preselected_indices)
+        self._selection = self.Selection(self._preselected_indices)
         self._viewport = self.Viewport(
             len(self._menu_entries),
             len(self._title_lines),
@@ -1475,6 +1510,8 @@ class TerminalMenu:
             menu_action_to_keys = {
                 "menu_up": set(("up", "ctrl-k", "ctrl-p", "k")),
                 "menu_down": set(("down", "ctrl-j", "ctrl-n", "j")),
+                "menu_page_up": set(("page_up", "ctrl-b")),
+                "menu_page_down": set(("page_down", "ctrl-f")),
                 "menu_start": set(("home", "ctrl-a")),
                 "menu_end": set(("end", "ctrl-e")),
                 "accept": set(self._accept_keys),
@@ -1505,6 +1542,10 @@ class TerminalMenu:
                     self._view.decrement_active_index()
                 elif next_key in current_menu_action_to_keys["menu_down"]:
                     self._view.increment_active_index()
+                elif next_key in current_menu_action_to_keys["menu_page_up"]:
+                    self._view.page_up()
+                elif next_key in current_menu_action_to_keys["menu_page_down"]:
+                    self._view.page_down()
                 elif next_key in current_menu_action_to_keys["menu_start"]:
                     self._view.active_displayed_index = 0
                 elif next_key in current_menu_action_to_keys["menu_end"]:
