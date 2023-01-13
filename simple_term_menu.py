@@ -1555,8 +1555,10 @@ class TerminalMenu:
                         self._selection.toggle(self._view.active_menu_index)
                 elif next_key in current_menu_action_to_keys["accept"]:
                     if self._view.active_menu_index is not None:
-                        if self._multi_select_select_on_accept or (
-                            not self._selection and self._multi_select_empty_ok is False
+                        if (
+                            self._multi_select_select_on_accept
+                            or self._multi_select is False
+                            or (not self._selection and self._multi_select_empty_ok is False)
                         ):
                             self._selection.add(self._view.active_menu_index)
                     self._chosen_accept_key = next_key
