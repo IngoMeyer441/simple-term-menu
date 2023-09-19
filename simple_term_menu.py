@@ -1270,7 +1270,7 @@ class TerminalMenu:
                             BoxDrawingCharacters.upper_left
                             + (2 * BoxDrawingCharacters.horizontal + " " + self._preview_title)[: num_cols - 3]
                             + " "
-                            + (num_cols - len(self._preview_title) - 6) * BoxDrawingCharacters.horizontal
+                            + (num_cols - wcswidth(self._preview_title) - 6) * BoxDrawingCharacters.horizontal
                             + BoxDrawingCharacters.upper_right
                         )[:num_cols]
                         + "\n"
