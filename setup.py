@@ -1,14 +1,13 @@
 import os
 import runpy
 import subprocess
-from distutils.cmd import Command
 from tempfile import TemporaryDirectory
 from typing import List, Optional, Tuple, cast  # noqa: F401
 
-from setuptools import setup
+from setuptools import Command, setup
 
 
-class PyinstallerCommand(Command):
+class PyinstallerCommand(Command):  # type: ignore
     description = "create a self-contained executable with PyInstaller"
     user_options = []  # type: List[Tuple[str, Optional[str], str]]
 
