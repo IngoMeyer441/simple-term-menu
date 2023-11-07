@@ -39,7 +39,7 @@ check-python-compatibility:py35:
   image: sciapp/python-testing:latest-ubuntu-20.04
   script:
   - python3.5 -m pip install .
-  - python3.5 -m simple_term_menu --version
+  - TERM=dumb python3.5 -m simple_term_menu --version
 
 build-linux-executable:
   stage: build
