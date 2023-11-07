@@ -8,6 +8,7 @@ pre-commit:
   stage: check
   image: python:3
   before_script:
+  - pip install "virtualenv<v20.24.6"  # temporary fix for gitlint
   - pip install "pre-commit==3.5.0"
   script:
   - TMP_MSG_FILE="$(mktemp)"
