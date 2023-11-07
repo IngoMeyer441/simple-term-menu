@@ -51,6 +51,8 @@ if __name__ == "__main__":
 
 
 def get_version_from_pyfile(version_file: str = "simple_term_menu.py") -> str:
+    if "TERM" not in os.environ:
+        os.environ["TERM"] = ""  # Avoid error messages when simple-term-menu is not installed on a terminal
     file_globals = runpy.run_path(version_file)
     return cast(str, file_globals["__version__"])
 

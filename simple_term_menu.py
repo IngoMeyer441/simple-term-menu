@@ -38,6 +38,14 @@ try:
 except ImportError as e:
     raise NotImplementedError('"{}" is currently not supported.'.format(platform.system())) from e
 
+if "TERM" not in os.environ:
+    if "PYCHARM_HOSTED" in os.environ:
+        raise NotImplementedError(
+            "simple-term-menu does not work in the PyCharm output console. Use a terminal instead (Alt + F12) or "
+            'activate "Emulate terminal in output console".'
+        )
+    raise NotImplementedError("simple-term-menu can only be used in a terminal emulator")
+
 
 __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
