@@ -10,4 +10,4 @@ jobs:
     - name: Setup simple-term-menu on Python 3.5
       run: python3.5 -m pip install .
     - name: Run a simple-term-menu check on Python 3.5
-      run: python3.5 -m simple_term_menu --version
+      run: TERM=dumb python3.5 -m simple_term_menu --version

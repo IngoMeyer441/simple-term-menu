@@ -8,7 +8,9 @@ jobs:
     - name: Check out repository code
       uses: actions/checkout@v2
     - name: Install pre-commit
-      run: pip install "pre-commit==2.17.0"
+      run: |
+        pip install "virtualenv<v20.24.6" &&  # temporary fix for gitlint
+        pip install "pre-commit==3.5.0"
     - name: Run pre-commit checks
       run: |
         TMP_MSG_FILE="$(mktemp)" &&

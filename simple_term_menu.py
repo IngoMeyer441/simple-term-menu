@@ -38,12 +38,20 @@ try:
 except ImportError as e:
     raise NotImplementedError('"{}" is currently not supported.'.format(platform.system())) from e
 
+if "TERM" not in os.environ:
+    if "PYCHARM_HOSTED" in os.environ:
+        raise NotImplementedError(
+            "simple-term-menu does not work in the PyCharm output console. Use a terminal instead (Alt + F12) or "
+            'activate "Emulate terminal in output console".'
+        )
+    raise NotImplementedError("simple-term-menu can only be used in a terminal emulator")
+
 
 __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2021 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (1, 6, 1)
+__version_info__ = (1, 6, 2)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -1270,7 +1278,7 @@ class TerminalMenu:
                             BoxDrawingCharacters.upper_left
                             + (2 * BoxDrawingCharacters.horizontal + " " + self._preview_title)[: num_cols - 3]
                             + " "
-                            + (num_cols - len(self._preview_title) - 6) * BoxDrawingCharacters.horizontal
+                            + (num_cols - wcswidth(self._preview_title) - 6) * BoxDrawingCharacters.horizontal
                             + BoxDrawingCharacters.upper_right
                         )[:num_cols]
                         + "\n"
@@ -1475,7 +1483,7 @@ class TerminalMenu:
     def show(self) -> Optional[Union[int, Tuple[int, ...]]]:
         def init_signal_handling() -> None:
             # `SIGWINCH` is send on terminal resizes
-            def handle_sigwinch(signum: signal.Signals, frame: FrameType) -> None:
+            def handle_sigwinch(signum: int, frame: Optional[FrameType]) -> None:
                 # pylint: disable=unused-argument
                 if self._reading_next_key:
                     self._paint_menu()

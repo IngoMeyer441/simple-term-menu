@@ -1,14 +1,13 @@
 import os
 import runpy
 import subprocess
-from distutils.cmd import Command
 from tempfile import TemporaryDirectory
-from typing import List, Optional, Tuple, cast
+from typing import List, Optional, Tuple, cast  # noqa: F401
 
-from setuptools import setup
+from setuptools import Command, setup
 
 
-class PyinstallerCommand(Command):
+class PyinstallerCommand(Command):  # type: ignore
     description = "create a self-contained executable with PyInstaller"
     user_options = []  # type: List[Tuple[str, Optional[str], str]]
 
@@ -51,6 +50,8 @@ if __name__ == "__main__":
 
 
 def get_version_from_pyfile(version_file: str = "simple_term_menu.py") -> str:
+    if "TERM" not in os.environ:
+        os.environ["TERM"] = ""  # Avoid error messages when simple-term-menu is not installed on a terminal
     file_globals = runpy.run_path(version_file)
     return cast(str, file_globals["__version__"])
 
