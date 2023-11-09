@@ -38,20 +38,12 @@ try:
 except ImportError as e:
     raise NotImplementedError('"{}" is currently not supported.'.format(platform.system())) from e
 
-if "TERM" not in os.environ:
-    if "PYCHARM_HOSTED" in os.environ:
-        raise NotImplementedError(
-            "simple-term-menu does not work in the PyCharm output console. Use a terminal instead (Alt + F12) or "
-            'activate "Emulate terminal in output console".'
-        )
-    raise NotImplementedError("simple-term-menu can only be used in a terminal emulator")
-
 
 __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2021 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (1, 6, 2)
+__version_info__ = (1, 6, 3)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -640,6 +632,15 @@ class TerminalMenu:
         status_bar_style: Optional[Iterable[str]] = DEFAULT_STATUS_BAR_STYLE,
         title: Optional[Union[str, Iterable[str]]] = None
     ):
+        def check_for_terminal_environment() -> None:
+            if "TERM" not in os.environ or os.environ["TERM"] == "":
+                if "PYCHARM_HOSTED" in os.environ:
+                    raise NotImplementedError(
+                        "simple-term-menu does not work in the PyCharm output console. Use a terminal instead (Alt + "
+                        'F12) or activate "Emulate terminal in output console".'
+                    )
+                raise NotImplementedError("simple-term-menu can only be used in a terminal emulator")
+
         def extract_shortcuts_menu_entries_and_preview_arguments(
             entries: Iterable[str],
         ) -> Tuple[List[str], List[Optional[str]], List[Optional[str]], List[int]]:
@@ -720,6 +721,7 @@ class TerminalMenu:
                     lines.append(shortcut_hints_line)
             return tuple(lines)
 
+        check_for_terminal_environment()
         (
             self._menu_entries,
             self._shortcut_keys,
