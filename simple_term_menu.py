@@ -569,6 +569,31 @@ class TerminalMenu:
         "underline": "smul",
         "up": "kcuu1",
     }
+
+    _codename_to_ansi = {
+        "bg_black": "\x1b[40m",
+        "bg_blue": "\x1b[44m",
+        "bg_cyan": "\x1b[46m",
+        "bg_gray": "\x1b[47m",
+        "bg_green": "\x1b[42m",
+        "bg_purple": "\x1b[45m",
+        "bg_red": "\x1b[41m",
+        "bg_yellow": "\x1b[43m",
+        "bold": "\x1b[1m",
+        "fg_black": "\x1b[30m",
+        "fg_blue": "\x1b[34m",
+        "fg_cyan": "\x1b[36m",
+        "fg_gray": "\x1b[37m",
+        "fg_green": "\x1b[32m",
+        "fg_purple": "\x1b[35m",
+        "fg_red": "\x1b[31m",
+        "fg_yellow": "\x1b[33m",
+        "reset_attributes": "\x1b[0m",
+        "standout": "\x1b[7m",
+        "underline": "\x1b[4m",
+    }
+
+
     _name_to_control_character = {
         "backspace": "",  # Is assigned later in `self._init_backspace_control_character`
         "ctrl-a": "\001",
@@ -1048,6 +1073,26 @@ class TerminalMenu:
                 for style in style_iterable:
                     file.write(self._codename_to_terminal_code[style])
 
+        # Function for applying inline styles
+        def apply_inline_style(menu_entry: str, style: Tuple[str, ...]) -> str:
+            reset_sequences = ['\x1b(B\x1b[m', '\x1b[0m', '\u001b[0m', '\033[0m']
+            style_sequences = [self._codename_to_ansi[style_name] for style_name in style]
+            for reset_sequence in reset_sequences:
+                menu_entry = menu_entry.replace(reset_sequence, reset_sequence + ''.join(style_sequences))
+            menu_entry += "\x1b[0m"
+            return menu_entry
+
+        # Function to check for the presence of ANSI reset sequences
+        def check_ansi_reset(menu_entry: str) -> bool:
+            reset_sequences = ['\x1b(B\x1b[m', '\x1b[0m', '\u001b[0m', '\033[0m']
+            return any(reset_sequence in menu_entry for reset_sequence in reset_sequences)
+
+        # Function for removing ANSI sequences
+        def remove_ansi_sequences(s: str) -> str:
+            ansi_escape = re.compile(r'(\x1b\[[0-?]*[ -/]*[@-~])|(\x1b\(B)')
+            return ansi_escape.sub('', s)
+
+        # Edited function to get the length of a string without ANSI sequences
         def print_menu_entries() -> int:
             # pylint: disable=unsubscriptable-object
             assert self._codename_to_terminal_code is not None
@@ -1062,7 +1107,7 @@ class TerminalMenu:
                     len(self._title_lines) * self._codename_to_terminal_code["cursor_up"]
                     + "\r"
                     + "\n".join(
-                        (title_line[:num_cols] + (num_cols - wcswidth(title_line)) * " ")
+                        (title_line[:num_cols] + (num_cols - wcswidth(remove_ansi_sequences(title_line))) * " ")
                         for title_line in self._title_lines
                     )
                     + "\n"
@@ -1070,6 +1115,7 @@ class TerminalMenu:
             shortcut_string_len = 4 if self._shortcuts_defined else 0
             displayed_index = -1
             for displayed_index, menu_index, menu_entry in self._view:
+                menu_entry_len = wcswidth(remove_ansi_sequences(menu_entry))
                 current_shortcut_key = self._shortcut_keys[menu_index]
                 self._tty_out.write(all_cursors_width * self._codename_to_terminal_code["cursor_right"])
                 if self._shortcuts_defined:
@@ -1085,7 +1131,10 @@ class TerminalMenu:
                         self._tty_out.write(3 * " ")
                     self._tty_out.write(" ")
                 if menu_index == self._view.active_menu_index:
-                    apply_style(self._menu_highlight_style)
+                    if check_ansi_reset(menu_entry):
+                        menu_entry = apply_inline_style(menu_entry, self._menu_highlight_style)
+                    else:
+                        apply_style(self._menu_highlight_style)
                 if self._search and self._search.search_text != "":
                     match_obj = self._search.matches[displayed_index][1]
                     self._tty_out.write(
@@ -1099,7 +1148,10 @@ class TerminalMenu:
                     )
                     apply_style()
                     if menu_index == self._view.active_menu_index:
-                        apply_style(self._menu_highlight_style)
+                        if check_ansi_reset(menu_entry):
+                            menu_entry = apply_inline_style(menu_entry, self._menu_highlight_style)
+                        else:
+                            apply_style(self._menu_highlight_style)
                     self._tty_out.write(
                         menu_entry[match_obj.end() : num_cols - all_cursors_width - shortcut_string_len]
                     )
@@ -1107,7 +1159,7 @@ class TerminalMenu:
                     self._tty_out.write(menu_entry[: num_cols - all_cursors_width - shortcut_string_len])
                 if menu_index == self._view.active_menu_index:
                     apply_style()
-                self._tty_out.write((num_cols - wcswidth(menu_entry) - all_cursors_width - shortcut_string_len) * " ")
+                self._tty_out.write((num_cols - menu_entry_len - all_cursors_width - shortcut_string_len) * " ")
                 if displayed_index < self._viewport.upper_index:
                     self._tty_out.write("\n")
             empty_menu_lines = self._viewport.upper_index - displayed_index
