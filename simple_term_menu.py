@@ -1473,7 +1473,7 @@ class TerminalMenu:
             self._paint_menu()
             self._paint_before_next_read = False
         # blocks until any amount of bytes is available
-        code = os.read(self._tty_in.fileno(), 80).decode("ascii", errors="ignore")
+        code = os.read(self._tty_in.fileno(), 80).decode("utf-8", errors="ignore")
         self._reading_next_key = False
         if code in self._terminal_code_to_codename:
             return self._terminal_code_to_codename[code]
