@@ -166,12 +166,12 @@ class TerminalMenu:
             search_text: Optional[str] = None,
             case_senitive: bool = False,
             show_search_hint: bool = False,
-            search_regex_function: Optional[Callable[[str], re.Pattern]] = None,
+            filter_regex_function: Optional[Callable[[str], re.Pattern]] = None,
         ):
             self._menu_entries = menu_entries
             self._case_sensitive = case_senitive
             self._show_search_hint = show_search_hint
-            self._search_regex_function = search_regex_function
+            self._filter_regex_function = filter_regex_function
             self._matches = []  # type: List[Tuple[int, Match[str]]]
             self._search_regex = None  # type: Optional[Pattern[str]]
             self._change_callback = None  # type: Optional[Callable[[], None]]
@@ -183,10 +183,15 @@ class TerminalMenu:
                 self._matches = []
             else:
                 matches = []
+                search_regex = self._search_regex
+                if self._filter_regex_function:
+                    search_regex = self._filter_regex_function(self._search_text) or search_regex
+
                 for i, menu_entry in enumerate(self._menu_entries):
-                    match_obj = self._search_regex.search(menu_entry)
-                    if match_obj:
-                        matches.append((i, match_obj))
+                    if search_regex.search(menu_entry):
+                        match_obj = self._search_regex.search(menu_entry)
+                        if match_obj:
+                            matches.append((i, match_obj))
                 self._matches = matches
 
         @property
@@ -206,8 +211,6 @@ class TerminalMenu:
             self._search_text = text
             search_text = self._search_text
             self._search_regex = None
-            if search_text and self._search_regex_function:
-                self._search_regex = self._search_regex_function(search_text)
             while search_text and self._search_regex is None:
                 try:
                     self._search_regex = re.compile(search_text, flags=re.IGNORECASE if not self._case_sensitive else 0)
@@ -622,7 +625,7 @@ class TerminalMenu:
         search_case_sensitive: bool = DEFAULT_SEARCH_CASE_SENSITIVE,
         search_highlight_style: Optional[Iterable[str]] = DEFAULT_SEARCH_HIGHLIGHT_STYLE,
         search_key: Optional[str] = DEFAULT_SEARCH_KEY,
-        search_regex_function: Optional[Callable[[str], re.Pattern]] = None,
+        filter_regex_function: Optional[Callable[[str], re.Pattern]] = None,
         shortcut_brackets_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_BRACKETS_HIGHLIGHT_STYLE,
         shortcut_key_highlight_style: Optional[Iterable[str]] = DEFAULT_SHORTCUT_KEY_HIGHLIGHT_STYLE,
         show_multi_select_hint: bool = DEFAULT_SHOW_MULTI_SELECT_HINT,
@@ -769,7 +772,7 @@ class TerminalMenu:
         self._search_case_sensitive = search_case_sensitive
         self._search_highlight_style = tuple(search_highlight_style) if search_highlight_style is not None else ()
         self._search_key = search_key
-        self._search_regex_function = search_regex_function
+        self._filter_regex_function = filter_regex_function
         self._shortcut_brackets_highlight_style = (
             tuple(shortcut_brackets_highlight_style) if shortcut_brackets_highlight_style is not None else ()
         )
@@ -813,7 +816,7 @@ class TerminalMenu:
             self._menu_entries,
             case_senitive=self._search_case_sensitive,
             show_search_hint=self._show_search_hint,
-            search_regex_function=self._search_regex_function,
+            filter_regex_function=self._filter_regex_function,
         )
         self._selection = self.Selection(self._preselected_indices)
         self._viewport = self.Viewport(
