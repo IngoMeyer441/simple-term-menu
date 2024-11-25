@@ -964,10 +964,14 @@ class TerminalMenu:
         self._tty_out = open("/dev/tty", "w", encoding=self._user_locale, errors="replace")
         self._old_term = termios.tcgetattr(self._tty_in.fileno())
         self._new_term = termios.tcgetattr(self._tty_in.fileno())
-        # set the terminal to: unbuffered, no echo and no <CR> to <NL> translation (so <enter> sends <CR> instead of
-        # <NL, this is necessary to distinguish between <enter> and <Ctrl-j> since <Ctrl-j> generates <NL>)
+        # set the terminal to: no line-buffering, no echo and no <CR> to <NL> translation (so <enter> sends <CR> instead
+        # of <NL, this is necessary to distinguish between <enter> and <Ctrl-j> since <Ctrl-j> generates <NL>)
         self._new_term[3] = cast(int, self._new_term[3]) & ~termios.ICANON & ~termios.ECHO & ~termios.ICRNL
         self._new_term[0] = cast(int, self._new_term[0]) & ~termios.ICRNL
+        # Set the timings for an unbuffered read: Return immediately after at least one character has arrived and don't
+        # wait for further characters
+        cast(list[bytes], self._new_term[6])[termios.VMIN] = b"\x01"
+        cast(list[bytes], self._new_term[6])[termios.VTIME] = b"\x00"
         termios.tcsetattr(
             self._tty_in.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._new_term)
         )
