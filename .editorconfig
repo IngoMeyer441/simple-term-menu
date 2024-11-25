@@ -25,3 +25,8 @@ indent_style = tab
 # 2 space indentation for YAML files
 [*.{yml,yaml}]
 indent_size = 2
+
+# Only allow 72 character line length for commit messages
+# See <https://www.git-scm.com/book/en/v2/Distributed-Git-Contributing-to-a-Project#_commit_guidelines> for a reference
+[COMMIT_EDITMSG]
+max_line_length = 72

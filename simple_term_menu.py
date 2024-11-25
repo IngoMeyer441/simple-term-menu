@@ -904,9 +904,11 @@ class TerminalMenu:
             return
         supported_colors = int(cls._query_terminfo_database("colors"))
         cls._codename_to_terminal_code = {
-            codename: cls._query_terminfo_database(codename)
-            if not (codename.startswith("bg_") or codename.startswith("fg_")) or supported_colors >= 8
-            else ""
+            codename: (
+                cls._query_terminfo_database(codename)
+                if not (codename.startswith("bg_") or codename.startswith("fg_")) or supported_colors >= 8
+                else ""
+            )
             for codename in cls._codenames
         }
         cls._codename_to_terminal_code.update(cls._name_to_control_character)
@@ -1224,9 +1226,11 @@ class TerminalMenu:
             )
             def strip_ansi_codes_except_styling(string: str) -> str:
                 stripped_string = strip_ansi_codes_except_styling.ansi_escape_regex.sub(  # type: ignore
-                    lambda match_obj: match_obj.group(0)
-                    if strip_ansi_codes_except_styling.ansi_sgr_regex.match(match_obj.group(0))  # type: ignore
-                    else "",
+                    lambda match_obj: (
+                        match_obj.group(0)
+                        if strip_ansi_codes_except_styling.ansi_sgr_regex.match(match_obj.group(0))  # type: ignore
+                        else ""
+                    ),
                     string,
                 )
                 return cast(str, stripped_string)

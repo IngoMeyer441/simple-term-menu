@@ -6,11 +6,11 @@ jobs:
     container: python:3
     steps:
     - name: Check out repository code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
+    - name: Add the project directory to safe directories in Git
+      run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
     - name: Install pre-commit
-      run: |
-        pip install "virtualenv<v20.24.6" &&  # temporary fix for gitlint
-        pip install "pre-commit==3.5.0"
+      run: pip install "pre-commit==4.0.1"
     - name: Run pre-commit checks
       run: |
         TMP_MSG_FILE="$(mktemp)" &&
@@ -19,7 +19,7 @@ jobs:
           --all-files \
           --color=always \
           --show-diff-on-failure \
-          --hook-stage commit &&
+          --hook-stage pre-commit &&
         pre-commit run \
           --all-files \
           --color=always \
