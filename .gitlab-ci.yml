@@ -108,13 +108,16 @@ deploy-to-pypi:
   only:
   - tags@imeyer/simple-term-menu
   script:
-  - pip install twine
   - echo "[distutils]"                    > ~/.pypirc;
     echo "index-servers ="               >> ~/.pypirc;
     echo "    pypi"                      >> ~/.pypirc;
     echo "[pypi]"                        >> ~/.pypirc;
     echo "username = __token__"          >> ~/.pypirc;
     echo "password = ${PYPI_DEPLOY_KEY}" >> ~/.pypirc;
+  - pip install
+      setuptools
+      twine
+      wheel
   - python setup.py sdist
   - python setup.py bdist_wheel
   - twine upload dist/*.tar.gz dist/*.whl
