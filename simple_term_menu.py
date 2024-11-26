@@ -1592,7 +1592,7 @@ class TerminalMenu:
                         self._search_key is None and next_key == DEFAULT_SEARCH_KEY
                     ):
                         self._search.search_text = ""
-                    elif self._search_key is None:
+                    elif self._search_key is None and next_key not in ("backspace",):
                         self._search.search_text = next_key
                 else:
                     assert self._search.search_text is not None
