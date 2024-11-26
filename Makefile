@@ -1,4 +1,4 @@
-PRECOMMIT_VERSION = 3.5.0
+PRECOMMIT_VERSION = 4.0.1
 
 PRECOMMIT_ENV := $(shell git rev-parse --git-dir 2>/dev/null || echo ".")/.pre-commit_env
 
@@ -41,7 +41,7 @@ check: install-pre-commit
 	"$(PRECOMMIT_ENV)/bin/pre-commit" run \
 		--all-files \
 		--show-diff-on-failure \
-		--hook-stage commit && \
+		--hook-stage pre-commit && \
 	"$(PRECOMMIT_ENV)/bin/pre-commit" run \
 		--all-files \
 		--show-diff-on-failure \

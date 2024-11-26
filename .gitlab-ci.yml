@@ -7,9 +7,16 @@ stages:
 pre-commit:
   stage: check
   image: python:3
+  variables:
+    GIT_CLONE_PATH: "${CI_BUILDS_DIR}/${CI_PROJECT_NAME}"
+    PIP_CACHE_DIR: "${CI_PROJECT_DIR}/.cache/pip"
+    PRE_COMMIT_HOME: "${CI_PROJECT_DIR}/.cache/pre-commit"
+  cache:
+    key: pre-commit
+    paths:
+    - .cache
   before_script:
-  - pip install "virtualenv<v20.24.6"  # temporary fix for gitlint
-  - pip install "pre-commit==3.5.0"
+  - pip install "pre-commit==4.0.1"
   script:
   - TMP_MSG_FILE="$(mktemp)"
   - git log -1 --pretty=%B > "${TMP_MSG_FILE}"
@@ -17,7 +24,7 @@ pre-commit:
       --all-files
       --color=always
       --show-diff-on-failure
-      --hook-stage commit &&
+      --hook-stage pre-commit &&
     pre-commit run
       --all-files
       --color=always
@@ -44,13 +51,13 @@ check-python-compatibility:py35:
 
 build-linux-executable:
   stage: build
-  image: centos:7
+  image: rockylinux:8
   before_script:
-  - yum install -y epel-release
-  - yum install -y python36-pip upx
+  - dnf install -y epel-release
+  - dnf install -y python39-pip upx
   script:
-  - python3 setup.py bdist_pyinstaller
-  - PLATFORM=$(python3 -c 'import platform; print("{}_{}".format(platform.system(), platform.machine()).lower())');
+  - python3.9 setup.py bdist_pyinstaller
+  - PLATFORM=$(python3.9 -c 'import platform; print(f"{platform.system()}_{platform.machine()}".lower())');
     mv "dist/${CI_PROJECT_NAME}" "dist/${CI_PROJECT_NAME}_${PLATFORM}"
   artifacts:
     expire_in: 1 week
@@ -64,7 +71,7 @@ build-macos-executable:
   - libvirt
   script:
   - python3 setup.py bdist_pyinstaller
-  - PLATFORM=$(python3 -c 'import platform; print("{}_{}".format(platform.system(), platform.machine()).lower())');
+  - PLATFORM=$(python3 -c 'import platform; print(f"{platform.system()}_{platform.machine()}".lower())');
     mv "dist/${CI_PROJECT_NAME}" "dist/${CI_PROJECT_NAME}_${PLATFORM}"
   artifacts:
     expire_in: 1 week
@@ -101,13 +108,16 @@ deploy-to-pypi:
   only:
   - tags@imeyer/simple-term-menu
   script:
-  - pip install twine
   - echo "[distutils]"                    > ~/.pypirc;
     echo "index-servers ="               >> ~/.pypirc;
     echo "    pypi"                      >> ~/.pypirc;
     echo "[pypi]"                        >> ~/.pypirc;
     echo "username = __token__"          >> ~/.pypirc;
     echo "password = ${PYPI_DEPLOY_KEY}" >> ~/.pypirc;
+  - pip install
+      setuptools
+      twine
+      wheel
   - python setup.py sdist
   - python setup.py bdist_wheel
   - twine upload dist/*.tar.gz dist/*.whl

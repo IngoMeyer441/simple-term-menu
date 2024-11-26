@@ -43,7 +43,7 @@ __author__ = "Ingo Meyer"
 __email__ = "i.meyer@fz-juelich.de"
 __copyright__ = "Copyright © 2021 Forschungszentrum Jülich GmbH. All rights reserved."
 __license__ = "MIT"
-__version_info__ = (1, 6, 4)
+__version_info__ = (1, 6, 5)
 __version__ = ".".join(map(str, __version_info__))
 
 
@@ -904,9 +904,11 @@ class TerminalMenu:
             return
         supported_colors = int(cls._query_terminfo_database("colors"))
         cls._codename_to_terminal_code = {
-            codename: cls._query_terminfo_database(codename)
-            if not (codename.startswith("bg_") or codename.startswith("fg_")) or supported_colors >= 8
-            else ""
+            codename: (
+                cls._query_terminfo_database(codename)
+                if not (codename.startswith("bg_") or codename.startswith("fg_")) or supported_colors >= 8
+                else ""
+            )
             for codename in cls._codenames
         }
         cls._codename_to_terminal_code.update(cls._name_to_control_character)
@@ -964,10 +966,14 @@ class TerminalMenu:
         self._tty_out = open("/dev/tty", "w", encoding=self._user_locale, errors="replace")
         self._old_term = termios.tcgetattr(self._tty_in.fileno())
         self._new_term = termios.tcgetattr(self._tty_in.fileno())
-        # set the terminal to: unbuffered, no echo and no <CR> to <NL> translation (so <enter> sends <CR> instead of
-        # <NL, this is necessary to distinguish between <enter> and <Ctrl-j> since <Ctrl-j> generates <NL>)
+        # set the terminal to: no line-buffering, no echo and no <CR> to <NL> translation (so <enter> sends <CR> instead
+        # of <NL, this is necessary to distinguish between <enter> and <Ctrl-j> since <Ctrl-j> generates <NL>)
         self._new_term[3] = cast(int, self._new_term[3]) & ~termios.ICANON & ~termios.ECHO & ~termios.ICRNL
         self._new_term[0] = cast(int, self._new_term[0]) & ~termios.ICRNL
+        # Set the timings for an unbuffered read: Return immediately after at least one character has arrived and don't
+        # wait for further characters
+        cast(list[bytes], self._new_term[6])[termios.VMIN] = b"\x01"
+        cast(list[bytes], self._new_term[6])[termios.VTIME] = b"\x00"
         termios.tcsetattr(
             self._tty_in.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._new_term)
         )
@@ -1220,9 +1226,11 @@ class TerminalMenu:
             )
             def strip_ansi_codes_except_styling(string: str) -> str:
                 stripped_string = strip_ansi_codes_except_styling.ansi_escape_regex.sub(  # type: ignore
-                    lambda match_obj: match_obj.group(0)
-                    if strip_ansi_codes_except_styling.ansi_sgr_regex.match(match_obj.group(0))  # type: ignore
-                    else "",
+                    lambda match_obj: (
+                        match_obj.group(0)
+                        if strip_ansi_codes_except_styling.ansi_sgr_regex.match(match_obj.group(0))  # type: ignore
+                        else ""
+                    ),
                     string,
                 )
                 return cast(str, stripped_string)
