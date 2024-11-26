@@ -45,7 +45,7 @@ yay -S python-simple-term-menu
 
 You also find self-contained executables for 64-bit Linux distributions and macOS High Sierra and newer on the
 [releases page](https://github.com/IngoMeyer441/simple-term-menu/releases/latest). They are created with
-[PyInstaller](http://www.pyinstaller.org) and only require glibc >= 2.17 on Linux (should be fine on any recent
+[PyInstaller](http://www.pyinstaller.org) and only require glibc >= 2.28 on Linux (should be fine on any recent
 Linux system).
 
 ## Usage
