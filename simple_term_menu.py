@@ -972,8 +972,8 @@ class TerminalMenu:
         self._new_term[0] = cast(int, self._new_term[0]) & ~termios.ICRNL
         # Set the timings for an unbuffered read: Return immediately after at least one character has arrived and don't
         # wait for further characters
-        cast(list[bytes], self._new_term[6])[termios.VMIN] = b"\x01"
-        cast(list[bytes], self._new_term[6])[termios.VTIME] = b"\x00"
+        cast(List[bytes], self._new_term[6])[termios.VMIN] = b"\x01"
+        cast(List[bytes], self._new_term[6])[termios.VTIME] = b"\x00"
         termios.tcsetattr(
             self._tty_in.fileno(), termios.TCSAFLUSH, cast(List[Union[int, List[Union[bytes, int]]]], self._new_term)
         )
